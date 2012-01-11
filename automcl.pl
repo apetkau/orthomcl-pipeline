@@ -33,7 +33,9 @@ sub check_dependencies
 
 sub adjust_fasta
 {
-	my ($input_dir, $output) = @_;
+	my ($input_dir, $output, $log_dir) = @_;
+
+	my $log = "$log_dir/adjustFasta.log";
 
 	my $ortho_adjust_fasta = $AutoConfig::params{'orthomcl'}{'bin'}.'/orthomclAdjustFasta';
 
@@ -47,12 +49,42 @@ sub adjust_fasta
 	{
 		my $base = basename($file, ('.faa','.fasta'));
 
-		system("$ortho_adjust_fasta $base \"$input_dir/$file\" 1") == 0 or die "Error running orthomclAdjustFasta for file $file";
+		if ($base ne $file) # if file had correct extension
+		{
+			my $command = "$ortho_adjust_fasta $base \"$input_dir/$file\" 1";
+
+			print "$command\n";
+			system("$command > $log 2>&1") == 0 or die "Error running orthomclAdjustFasta for file $file. Check log $log";
+		}
 
 		$file = readdir($dh);
 	}
 	closedir($dh);
 
+	print "\n";
+
+	chdir $cwd;
+}
+
+sub filter_fasta
+{
+	my ($input_dir, $output_dir, $log_dir) = @_;
+
+	my $log = "$log_dir/filterFasta.log";
+
+	my $ortho_filter_fasta = $AutoConfig::params{'orthomcl'}{'bin'}.'/orthomclFilterFasta';
+	my $min_length = $AutoConfig::params{'filter'}{'min_length'};
+	my $max_percent_stop = $AutoConfig::params{'filter'}{'max_percent_stop'};
+
+	my $cwd = getcwd;
+	chdir $output_dir or die "Could not change to directory $output_dir";
+	my $command = "$ortho_filter_fasta \"$input_dir\" $min_length $max_percent_stop";
+	print "$command\n";
+
+	system("$command 1> $log 2>&1") == 0 or die "Failed for command $command. Check log $log";
+
+	print "\n";
+ 
 	chdir $cwd;
 }
 
@@ -79,7 +111,7 @@ if (-e $output_dir)
     print "Warning: directory \"$output_dir\" already exists, are you sure you want to store data here [Y]? ";
     my $response = <>;
     chomp $response;
-    if (not ($response eq 'y' or $response eq 'Y' or $response eq ''))
+    if (not ($response eq 'y' or $response eq 'Y' or $response))
     {
         die "Directory \"$output_dir\" already exists, could not continue.";
     }
@@ -89,7 +121,14 @@ else
 	mkdir $output_dir;
 }
 
-my $compliant_dir = "$output_dir/compliant_fasta";
-mkdir $compliant_dir if (not -e $compliant_dir);
+my $log_dir = "$output_dir/log";
 
-adjust_fasta($input_dir,$compliant_dir);
+my $compliant_dir = "$output_dir/compliant_fasta";
+my $blast_dir = "$output_dir/blast_dir";
+
+mkdir $log_dir if (not -e $log_dir);
+mkdir $compliant_dir if (not -e $compliant_dir);
+mkdir $blast_dir if (not -e $blast_dir);
+
+adjust_fasta($input_dir,$compliant_dir, $log_dir);
+filter_fasta($compliant_dir,$blast_dir, $log_dir);

@@ -19,7 +19,8 @@ sub usage
 "Usage: ".basename($0)." -i [input dir] -o [output dir] [Options]
 	Options:
 	-i|--input-dir: The input directory containing the files to process.
-	-o|--output-dir: The output directory for the job.\n";
+	-o|--output-dir: The output directory for the job.
+	-s|--split:  The number of times to split the fasta files for blasting\n";
 }
 
 sub check_dependencies
@@ -88,11 +89,27 @@ sub filter_fasta
 	chdir $cwd;
 }
 
+sub split_fasta
+{
+	my ($input_dir, $split_number, $log_dir) = @_;
+
+	my $log = "$log_dir/split.log";
+	my $input_file = "$input_dir/goodProteins.fasta";
+
+	require("$script_dir/lib/split.pl");
+	print "splittting $input_file into $split_number pieces\n";
+	Split::run($input_file,$split_number,$input_dir,$log);
+
+	print "\n";
+}
+
 my ($input_dir, $output_dir);
+my $split_number;
 
 if (!GetOptions(
 	'i|input-dir=s' => \$input_dir,
-	'o|output-dir=s' => \$output_dir))
+	'o|output-dir=s' => \$output_dir,
+	's|split=i' => \$split_number))
 {
 	die "$!".usage;
 }
@@ -103,15 +120,26 @@ die "Error: no input-dir defined\n".usage if (not defined $input_dir);
 die "Error: input-dir not a directory\n".usage if (not -d $input_dir);
 die "Error: output-dir not defined\n".usage if (not defined $output_dir);
 
+if (defined $split_number)
+{
+	die "Error: split value = $split_number is invalid" if ($split_number !~ /\d+/ or $split_number <= 0);
+}
+
 $input_dir = abs_path($input_dir);
 $output_dir = abs_path($output_dir);
+
+if (not defined $split_number)
+{
+	$split_number = 10;
+	print STDERR "Warning: split value not defined, defaulting to $split_number\n";
+}
 
 if (-e $output_dir)
 {
     print "Warning: directory \"$output_dir\" already exists, are you sure you want to store data here [Y]? ";
     my $response = <>;
     chomp $response;
-    if (not ($response eq 'y' or $response eq 'Y' or $response))
+    if (not ($response eq 'y' or $response eq 'Y'))
     {
         die "Directory \"$output_dir\" already exists, could not continue.";
     }
@@ -132,3 +160,4 @@ mkdir $blast_dir if (not -e $blast_dir);
 
 adjust_fasta($input_dir,$compliant_dir, $log_dir);
 filter_fasta($compliant_dir,$blast_dir, $log_dir);
+split_fasta($blast_dir, $split_number, $log_dir);

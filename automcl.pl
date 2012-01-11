@@ -26,10 +26,15 @@ sub usage
 sub check_dependencies
 {
 	my $orthomclbin = $AutoConfig::params{'orthomcl'}{'bin'};
+	my $formatdbbin = $AutoConfig::params{'bin'}{'formatdb'};
+
 	die "Error: orthomcl bin dir not defined" if (not defined $orthomclbin);
 	die "Error: orthomcl bin dir \"$orthomclbin\" does not exist" if (not -e $orthomclbin);
 
 	die "Error: orthomclAdjustFasta does not exist in \"$orthomclbin\"" if (not -e "$orthomclbin/orthomclAdjustFasta");
+
+	die "Error: formatdb location not defined" if (not defined $formatdbbin);
+	die "Error: formatdb=\"$formatdbbin\" does not exist" if (not -e $formatdbbin);
 }
 
 sub adjust_fasta
@@ -97,8 +102,27 @@ sub split_fasta
 	my $input_file = "$input_dir/goodProteins.fasta";
 
 	require("$script_dir/lib/split.pl");
-	print "splittting $input_file into $split_number pieces\n";
+	print "splitting $input_file into $split_number pieces\n";
 	Split::run($input_file,$split_number,$input_dir,$log);
+
+	print "\n";
+}
+
+sub format_database
+{
+	my ($input_dir, $log_dir) = @_;
+
+	my $log = "$log_dir/formatDatabase.log";
+	my $formatdb_log = "$log_dir/formatdb.log";
+
+	my $formatdb = $AutoConfig::params{'bin'}{'formatdb'};
+
+	my $database = "$input_dir/goodProteins.fasta";
+
+	my $command = "$formatdb -i \"$database\" -p T -l \"$formatdb_log\"";
+	print $command;
+
+	system("$command 1>$log 2>&1") == 0 or die "Could not format database";
 
 	print "\n";
 }
@@ -161,3 +185,4 @@ mkdir $blast_dir if (not -e $blast_dir);
 adjust_fasta($input_dir,$compliant_dir, $log_dir);
 filter_fasta($compliant_dir,$blast_dir, $log_dir);
 split_fasta($blast_dir, $split_number, $log_dir);
+format_database($blast_dir, $log_dir);

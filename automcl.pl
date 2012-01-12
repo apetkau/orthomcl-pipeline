@@ -28,7 +28,8 @@ sub usage
 	-i|--input-dir: The input directory containing the files to process.
 	-o|--output-dir: The output directory for the job.
 	-s|--split:  The number of times to split the fasta files for blasting
-	-m|--orthomcl-config:  The orthomcl config file\n";
+	-m|--orthomcl-config:  The orthomcl config file
+	-h|--help:  Show help.\n";
 }
 
 sub start_scheduler
@@ -287,22 +288,33 @@ sub perform_blast
 	my $task_num = 0;
 	my @job_ids;
 
+	# set autoflush
 	$| = 1;
 	print "performing blasts ";
 	start_scheduler();
 
         my ($drmerr,$jt,$drmdiag,$jobid,$drmps);
-        ($drmerr,$jt,$drmdiag) = drmaa_allocate_job_template();
-        die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
-
-	($drmerr,$drmdiag) = drmaa_set_attribute($jt,$DRMAA_REMOTE_COMMAND,$command); #sets the command for the job to be run
-        die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
 
 	for ($task_num = 1; $task_num < $num_tasks; $task_num++)
 	{
 		my $blast_params = ['-p', 'blastp', '-i', "$blast_dir/$all_fasta_name.$task_num",
-				    '-d', "$blast_dir/$all_fasta_name", '-o', "$blast_results_dir/$blast_result_name.$task_num",
-				    '-F', "m S", '-v', '100000', '-b', '100000', '-z', '30871', '-e', '1e-5', '-m', '8'];
+				    '-d', "$blast_dir/$all_fasta_name", '-o', "$blast_results_dir/$blast_result_name.$task_num"];
+		foreach my $key (keys %{$AutoConfig::params{'blast'}})
+		{
+			my $value = $AutoConfig::params{'blast'}{$key};
+
+			if (defined $value)
+			{
+				push(@$blast_params, "-$key");
+				push(@$blast_params, $value);
+			}
+		}
+
+        	($drmerr,$jt,$drmdiag) = drmaa_allocate_job_template();
+		die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
+
+		($drmerr,$drmdiag) = drmaa_set_attribute($jt,$DRMAA_REMOTE_COMMAND,$command); #sets the command for the job to be run
+		die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
 
 		($drmerr,$drmdiag) = drmaa_set_attribute($jt,$DRMAA_OUTPUT_PATH,":$blast_log_dir/stdout-$task_num.txt"); #sets the output directory for stdout
 	        die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
@@ -316,11 +328,11 @@ sub perform_blast
 		($drmerr,$jobid,$drmdiag) = drmaa_run_job($jt); #submits the job to whatever scheduler you're using
 	        die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
 
+		($drmerr,$drmdiag) = drmaa_delete_job_template($jt); #clears up the template for this job
+        	die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
+
 		push(@job_ids,$jobid);
 	}
-
-	($drmerr,$drmdiag) = drmaa_delete_job_template($jt); #clears up the template for this job
-        die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
 
 	# wait for jobs
 	do
@@ -368,20 +380,21 @@ sub parseblast
 	system("$command 2> $parse_blast_log") == 0 or die "Could not concat blast results to $blast_load_dir/$blast_all_results";
 
 	my $orthobin = $AutoConfig::params{'orthomcl'}{'bin'};
-	my $ortho_parser = "$orthobin/orthomclLoadBlast";
+	my $ortho_parser = "$orthobin/orthomclBlastParser";
 
 	$command = "$ortho_parser \"$blast_load_dir/$blast_all_results\" \"$fasta_input\" > \"$blast_load_dir/similarSequences.txt\"";
 	print "$command\n";
-	system("$command 2>> $parse_blast_log") == 0 or die "Could not run orthomclLoadBlast";
+	system("$command 2>> $parse_blast_log") == 0 or die "Could not run orthomclBlastParser. See $parse_blast_log";
 
 	print "\n";
 }
 
 sub ortho_load
 {
-	my ($ortho_config, $similar_seqs, $log_dir) = @_;
+	my ($ortho_config, $blast_load_dir, $log_dir) = @_;
 
 	my $ortho_log = "$log_dir/orthomclLoadBlast.log";
+	my $similar_seqs = "$blast_load_dir/similarSequences.txt";
 
         my $orthobin = $AutoConfig::params{'orthomcl'}{'bin'};
         my $loadbin = "$orthobin/orthomclLoadBlast";
@@ -389,7 +402,87 @@ sub ortho_load
 	my $command = "$loadbin \"$ortho_config\" \"$similar_seqs\"";
 
 	print "$command\n";
-	system("$command 1>$ortho_log 2>&1") == 0 or die "Could not load $similar_seqs into database";
+	system("$command 1>$ortho_log 2>&1") == 0 or die "Could not load $similar_seqs into database. See $ortho_log";
+
+	print "\n";
+}
+
+sub ortho_pairs
+{
+	my ($ortho_config, $log_dir) = @_;
+
+	my $ortho_log = "$log_dir/orthomclPairs.log";
+
+        my $orthobin = $AutoConfig::params{'orthomcl'}{'bin'};
+
+	my $pairsbin = "$orthobin/orthomclPairs";
+
+	my $command = "$pairsbin \"$ortho_config\" \"$ortho_log\" cleanup=yes";
+
+	print "$command\n";
+	system($command) == 0 or die "Could not execute $command\n";
+
+	print "\n";
+}
+
+sub ortho_dump_pairs
+{
+	my ($ortho_config, $pairs_dir, $log_dir) = @_;
+
+	my $ortho_log = "$log_dir/orthomclDumpPairs.log";
+
+        my $orthobin = $AutoConfig::params{'orthomcl'}{'bin'};
+
+	my $pairsbin = "$orthobin/orthomclDumpPairsFiles";
+
+	my $cwd = getcwd;
+	chdir $pairs_dir or die "Could not change to directory $pairs_dir";
+
+	my $command = "$pairsbin \"$cwd/$ortho_config\"";
+
+	print "$command\n";
+	system("$command 1>$ortho_log 2>&1") == 0 or die "Could not execute $command. See $ortho_log\n";
+
+	chdir $cwd;
+
+	print "\n";
+}
+
+sub run_mcl
+{
+	my ($pairs_dir, $log_dir) = @_;
+
+	my $ortho_log = "$log_dir/mcl.log";
+	my $mcl_input = "$pairs_dir/mclInput";
+	my $mcl_output = "$pairs_dir/mclOutput";
+
+        my $mcl_bin = $AutoConfig::params{'bin'}{'mcl'};
+
+	my $command = "$mcl_bin \"$mcl_input\" --abc -I 1.5 -o \"$mcl_output\"";
+
+	print "$command\n";
+	system("$command 1>$ortho_log 2>&1") == 0 or die "Could not execute $command. See $ortho_log\n";
+
+	print "\n";
+}
+
+sub mcl_to_groups
+{
+	my ($pairs_dir, $groups_dir, $log_dir) = @_;
+
+	my $ortho_log = "$log_dir/mclGroups.log";
+	my $mcl_output = "$pairs_dir/mclOutput";
+	my $groups_file = "$groups_dir/groups.txt";
+
+        my $orthobin = $AutoConfig::params{'orthomcl'}{'bin'};
+
+	my $groupsbin = "$orthobin/orthomclMclToGroups";
+
+	my $command = "$groupsbin group_ 1 < \"$mcl_output\" > \"$groups_file\"";
+
+	print "$command\n";
+	system("$command 2>$ortho_log") == 0 or die "Could not execute $command. See $ortho_log\n";
+	print "Groups File:  $groups_file\n";
 
 	print "\n";
 }
@@ -399,14 +492,22 @@ sub ortho_load
 my ($input_dir, $output_dir);
 my $split_number;
 my $orthomcl_config;
+my $help;
 
 if (!GetOptions(
 	'i|input-dir=s' => \$input_dir,
 	'm|orthomcl-config=s' => \$orthomcl_config,
 	'o|output-dir=s' => \$output_dir,
-	's|split=i' => \$split_number))
+	's|split=i' => \$split_number,
+	'h|help' => \$help))
 {
 	die "$!".usage;
+}
+
+if (defined $help and $help)
+{
+	print usage;
+	exit 0;
 }
 
 check_dependencies();
@@ -453,6 +554,8 @@ my $compliant_dir = "$output_dir/compliant_fasta";
 my $blast_dir = "$output_dir/blast_dir";
 my $blast_results_dir = "$output_dir/blast_results";
 my $blast_load_dir = "$output_dir/blast_load";
+my $pairs_dir = "$output_dir/pairs";
+my $groups_dir = "$output_dir/groups";
 
 mkdir $log_dir if (not -e $log_dir);
 mkdir $blast_log_dir if (not -e $blast_log_dir);
@@ -460,6 +563,8 @@ mkdir $compliant_dir if (not -e $compliant_dir);
 mkdir $blast_dir if (not -e $blast_dir);
 mkdir $blast_results_dir if (not -e $blast_results_dir);
 mkdir $blast_load_dir if (not -e $blast_load_dir);
+mkdir $pairs_dir if (not -e $pairs_dir);
+mkdir $groups_dir if (not -e $groups_dir);
 
 check_database($orthomcl_config, $log_dir);
 load_ortho_schema($orthomcl_config, $log_dir);
@@ -469,5 +574,8 @@ split_fasta($blast_dir, $split_number, $log_dir);
 format_database($blast_dir, $log_dir);
 perform_blast($blast_dir, $blast_results_dir, $split_number, $blast_log_dir);
 parseblast($blast_results_dir, $blast_load_dir, $orthomcl_config, $compliant_dir, $log_dir);
-
-#ortho_load($orthomcl_config, $similar_seqs, $log_dir);
+ortho_load($orthomcl_config, $blast_load_dir, $log_dir);
+ortho_pairs($orthomcl_config, $log_dir);
+ortho_dump_pairs($orthomcl_config, $pairs_dir, $log_dir);
+run_mcl($pairs_dir, $log_dir);
+mcl_to_groups($pairs_dir, $groups_dir, $log_dir);

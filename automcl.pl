@@ -516,6 +516,7 @@ if (defined $help and $help)
 }
 
 check_dependencies();
+print "Starting pipeline on: ".localtime."\n";
 
 die "Error: no input-dir defined\n".usage if (not defined $input_dir);
 die "Error: input-dir not a directory\n".usage if (not -d $input_dir);
@@ -592,3 +593,5 @@ ortho_pairs($orthomcl_config, $log_dir);
 ortho_dump_pairs($orthomcl_config, $pairs_dir, $log_dir);
 run_mcl($pairs_dir, $log_dir);
 mcl_to_groups($pairs_dir, $groups_dir, $log_dir);
+
+print "Orthomcl Pipeline ended on ".localtime."\n";

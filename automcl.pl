@@ -12,6 +12,8 @@ use Schedule::DRMAAc qw( :all );
 use Getopt::Long;
 use Cwd qw(getcwd abs_path);
 use File::Basename qw(basename dirname);
+use File::Copy;
+use File::Path;
 use DBI;
 use DBD::mysql;
 
@@ -29,6 +31,7 @@ sub usage
 	-o|--output-dir: The output directory for the job.
 	-s|--split:  The number of times to split the fasta files for blasting
 	-m|--orthomcl-config:  The orthomcl config file
+	--compliant:  If fasta data is already compliant (headers match, etc).
 	-h|--help:  Show help.\n";
 }
 
@@ -493,12 +496,14 @@ my ($input_dir, $output_dir);
 my $split_number;
 my $orthomcl_config;
 my $help;
+my $compliant;
 
 if (!GetOptions(
 	'i|input-dir=s' => \$input_dir,
 	'm|orthomcl-config=s' => \$orthomcl_config,
 	'o|output-dir=s' => \$output_dir,
 	's|split=i' => \$split_number,
+	'compliant' => \$compliant,
 	'h|help' => \$help))
 {
 	die "$!".usage;
@@ -568,7 +573,15 @@ mkdir $groups_dir if (not -e $groups_dir);
 
 check_database($orthomcl_config, $log_dir);
 load_ortho_schema($orthomcl_config, $log_dir);
-adjust_fasta($input_dir,$compliant_dir, $log_dir);
+if (defined $compliant && $compliant)
+{
+	rmtree($compliant_dir) or die "Could not delete $compliant_dir: $!";
+	system("cp -R \"$input_dir\" \"$compliant_dir\"") == 0 or die "Could not copy $input_dir to $compliant_dir: $!";
+}
+else
+{
+	adjust_fasta($input_dir,$compliant_dir, $log_dir);
+}
 filter_fasta($compliant_dir,$blast_dir, $log_dir);
 split_fasta($blast_dir, $split_number, $log_dir);
 format_database($blast_dir, $log_dir);

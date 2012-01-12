@@ -12,6 +12,8 @@ use Schedule::DRMAAc qw( :all );
 use Getopt::Long;
 use Cwd qw(getcwd abs_path);
 use File::Basename qw(basename dirname);
+use DBI;
+use DBD::mysql;
 
 my $script_dir = $FindBin::Bin;
 
@@ -57,9 +59,132 @@ sub check_dependencies
 
 	die "Error: blastall location not defined" if (not defined $blastallbin);
 	die "Error: blastall=\"$blastallbin\" does not exist" if (not -e $blastallbin);
+}
 
+sub check_database
+{
+	my ($ortho_config, $log_dir) = @_;
 
-	#require("DBD::mysql");
+	my $check_database_log = "$log_dir/checkDatabase.log";
+
+	die "Undefined orthmcl config file" if (not defined $ortho_config);
+
+	# read orthomcl config file
+	my %ortho_params;
+	open(my $ortho_h, "<$ortho_config") or die "Could not open orthomcl config file: $ortho_config: $!";
+	while(<$ortho_h>)
+	{
+		my ($valid_line) = ($_ =~ /^([^#]*)/);
+
+		next if (not defined $valid_line or $valid_line eq '');
+
+		my @tokens = split(/=/, $valid_line);
+		next if (@tokens <= 1 or (not defined $tokens[0]) or ($tokens[0] eq ''));
+
+		chomp $tokens[0];
+		chomp $tokens[1];
+		$ortho_params{$tokens[0]} = $tokens[1];
+	}
+	close($ortho_h);
+
+	my $dbConnect = $ortho_params{'dbConnectString'};
+	my $dbLogin = $ortho_params{'dbLogin'};
+	my $dbPass = $ortho_params{'dbPassword'};
+
+	die "Error: no dbConnectString in $ortho_config" if (not defined $dbConnect or $dbConnect eq '');
+	die "Error: no dbLogin in $ortho_config" if (not defined $dbLogin or $dbLogin eq '');
+	die "Error: no dbPassword in $ortho_config" if (not defined $dbPass);
+
+	my $dbh = DBI->connect($dbConnect,$dbLogin,$dbPass, {RaiseError => 1, AutoCommit => 0});
+	die "Error connecting to database $dbConnect, user=$dbLogin: ".$DBI::errstr if (not defined $dbh);
+	my ($sth,$rv);
+	my $database_name;
+
+	eval
+	{
+		$sth = $dbh->prepare('select database()');
+		$rv = $sth->execute;
+		die "Could not get database name: ".$dbh->errstr if (not defined $rv);
+		my @array = $sth->fetchrow_array;
+		$sth->finish;
+		die "Error: could not get database name when executing 'select database()'" if (@array <= 0);
+		$database_name = $array[0];
+		die "Could not get database name when executing 'select database()'" if (not defined $database_name or $database_name eq '');
+		die "Attempting to use 'mysql' database in $ortho_config, not gonna touch that" if ($database_name eq 'mysql');
+
+		die "Crazy database name you have there ($database_name), don't like it" if ($database_name !~ /^[0-9,a-z,A-Z\$_\-]+$/);
+	};
+	if ($@)
+	{
+		my $error_message = $@;
+		$dbh->rollback;
+		$dbh->disconnect;
+		die "Failed: $error_message";
+	}
+
+	eval
+	{
+		$sth = $dbh->prepare('show tables');
+		$rv = $sth->execute;
+		$sth->finish;
+		die "Error executing \"show tables\" on database $dbConnect: ".$sth->errstr if (not defined $rv);
+	};
+	if ($@)
+	{
+		my $err_message = $@;
+		$dbh->rollback;
+		$dbh->disconnect;
+		die "Failed: $err_message";
+	}
+	
+	if ($rv > 0)
+	{
+		print "Warning: some tables exist already in database $dbConnect, user=$dbLogin, name=$database_name. Do you want to remove (y/n)? ";
+		my $response = <>;
+		chomp $response;
+		if (not ($response eq 'y' or $response eq 'Y' or ($response =~ /^yes$/i)))
+		{
+			$dbh->rollback;
+			$dbh->disconnect;
+			die "Tables already exist in database $dbConnect, could not continue.";
+		}
+		else
+		{
+			eval
+			{	
+				print "Executing: 'drop database $database_name'\n";
+				$sth = $dbh->prepare("drop database $database_name"); # can't bind database name (causes error)
+				$rv = $sth->execute();
+				die "Error dropping database: ".$sth->errstr if (not defined $rv);
+				
+				print "Executing: 'create database $database_name'\n";
+				$sth = $dbh->prepare("create database $database_name");
+				$rv = $sth->execute();
+		
+				if (not defined $sth)
+				{
+					my $errstr = $dbh->errstr;
+					die "Error creating database: $errstr: rolling back";
+				}
+				else
+				{
+					$dbh->commit;
+					print "Successfully removed old database entries\n";
+				}
+			};
+			if ($@)
+			{
+				my $err_message = $@;
+				eval {$dbh->rollback;};
+				eval {$dbh->disconnect;};
+				die "Failure: $err_message";
+			}
+		}
+	}
+
+	print "\n";
+
+	$dbh->disconnect;
 }
 
 sub adjust_fasta
@@ -336,6 +461,7 @@ mkdir $blast_dir if (not -e $blast_dir);
 mkdir $blast_results_dir if (not -e $blast_results_dir);
 mkdir $blast_load_dir if (not -e $blast_load_dir);
 
+check_database($orthomcl_config, $log_dir);
 load_ortho_schema($orthomcl_config, $log_dir);
 adjust_fasta($input_dir,$compliant_dir, $log_dir);
 filter_fasta($compliant_dir,$blast_dir, $log_dir);

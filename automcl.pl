@@ -6,8 +6,8 @@ use warnings;
 use FindBin;
 
 use lib $FindBin::Bin;
-use AutoConfig;
 
+use YAML::Tiny;
 use Schedule::DRMAAc qw( :all );
 use Getopt::Long;
 use Cwd qw(getcwd abs_path);
@@ -23,13 +23,16 @@ my $all_fasta_name = 'goodProteins.fasta';
 my $blast_result_name = 'blast_results';
 my $blast_all_results = "all.fasta";
 
+my $orthoParams; # stores main parameters
+
 sub usage
 {
-"Usage: ".basename($0)." -i [input dir] -o [output dir] -m [orthmcl config] [Options]
+"Usage: ".basename($0)." -i [input dir] -o [output dir] -c [main config] -m [orthmcl config] [Options]
 	Options:
 	-i|--input-dir: The input directory containing the files to process.
 	-o|--output-dir: The output directory for the job.
 	-s|--split:  The number of times to split the fasta files for blasting
+	-c|--config:  The main config file.
 	-m|--orthomcl-config:  The orthomcl config file
 	--compliant:  If fasta data is already compliant (headers match, etc).
 	-h|--help:  Show help.\n";
@@ -49,9 +52,9 @@ sub stop_scheduler
 
 sub check_dependencies
 {
-	my $orthomclbin = $AutoConfig::params{'orthomcl'}{'bin'};
-	my $formatdbbin = $AutoConfig::params{'bin'}{'formatdb'};
-	my $blastallbin = $AutoConfig::params{'bin'}{'blastall'};
+	my $orthomclbin = $orthoParams->{'path'}->{'orthomcl'};
+	my $formatdbbin = $orthoParams->{'path'}->{'formatdb'};
+	my $blastallbin = $orthoParams->{'path'}->{'blastall'};
 
 	die "Error: orthomcl bin dir not defined" if (not defined $orthomclbin);
 	die "Error: orthomcl bin dir \"$orthomclbin\" does not exist" if (not -e $orthomclbin);
@@ -70,6 +73,8 @@ sub check_database
 	my ($ortho_config, $log_dir) = @_;
 
 	my $check_database_log = "$log_dir/checkDatabase.log";
+
+	print "\n=Stage: Validate Database=\n";
 
 	die "Undefined orthmcl config file" if (not defined $ortho_config);
 
@@ -197,7 +202,8 @@ sub adjust_fasta
 
 	my $log = "$log_dir/adjustFasta.log";
 
-	my $ortho_adjust_fasta = $AutoConfig::params{'orthomcl'}{'bin'}.'/orthomclAdjustFasta';
+	print "\n=Stage: Adjust Fasta=\n";
+	my $ortho_adjust_fasta = $orthoParams->{'path'}->{'orthomcl'}.'/orthomclAdjustFasta';
 
 	opendir(my $dh, $input_dir) or die "Could not open directory $input_dir";
 
@@ -232,9 +238,11 @@ sub filter_fasta
 
 	my $log = "$log_dir/filterFasta.log";
 
-	my $ortho_filter_fasta = $AutoConfig::params{'orthomcl'}{'bin'}.'/orthomclFilterFasta';
-	my $min_length = $AutoConfig::params{'filter'}{'min_length'};
-	my $max_percent_stop = $AutoConfig::params{'filter'}{'max_percent_stop'};
+	my $ortho_filter_fasta = $orthoParams->{'path'}->{'orthomcl'}.'/orthomclFilterFasta';
+	my $min_length = $orthoParams->{'filter'}->{'min_length'};
+	my $max_percent_stop = $orthoParams->{'filter'}->{'max_percent_stop'};
+
+	print "\n=Stage: Filter Fasta=\n";
 
 	my $cwd = getcwd;
 	chdir $output_dir or die "Could not change to directory $output_dir";
@@ -255,6 +263,8 @@ sub split_fasta
 	my $log = "$log_dir/split.log";
 	my $input_file = "$input_dir/$all_fasta_name";
 
+	print "\n=Stage: Split Fasta=\n";
+
 	require("$script_dir/lib/split.pl");
 	print "splitting $input_file into $split_number pieces\n";
 	Split::run($input_file,$split_number,$input_dir,$log);
@@ -269,7 +279,9 @@ sub format_database
 	my $log = "$log_dir/formatDatabase.log";
 	my $formatdb_log = "$log_dir/formatdb.log";
 
-	my $formatdb = $AutoConfig::params{'bin'}{'formatdb'};
+	my $formatdb = $orthoParams->{'path'}->{'formatdb'};
+
+	print "\n=Stage: Format Database=\n";
 
 	my $database = "$input_dir/$all_fasta_name";
 
@@ -285,26 +297,28 @@ sub perform_blast
 {
 	my ($blast_dir, $blast_results_dir, $num_tasks, $blast_log_dir) = @_;
 
-	my $blastbin = $AutoConfig::params{'bin'}{'blastall'};
+	my $blastbin = $orthoParams->{'path'}->{'blastall'};
 
 	my $command = $blastbin;
 	my $task_num = 0;
 	my @job_ids;
 
+	print "\n=Stage: Perform Blast=\n";
+
 	# set autoflush
 	$| = 1;
-	print "performing blasts ";
+	print "performing blasts .";
 	start_scheduler();
 
         my ($drmerr,$jt,$drmdiag,$jobid,$drmps);
 
 	for ($task_num = 1; $task_num < $num_tasks; $task_num++)
 	{
-		my $blast_params = ['-p', 'blastp', '-i', "$blast_dir/$all_fasta_name.$task_num",
+		my $blast_params = ['-p', 'blastp', '-i', "$blast_dir/$all_fasta_name.$task_num", '-m', '8',
 				    '-d', "$blast_dir/$all_fasta_name", '-o', "$blast_results_dir/$blast_result_name.$task_num"];
-		foreach my $key (keys %{$AutoConfig::params{'blast'}})
+		foreach my $key (keys %{$orthoParams->{'blast'}})
 		{
-			my $value = $AutoConfig::params{'blast'}{$key};
+			my $value = $orthoParams->{'blast'}->{$key};
 
 			if (defined $value)
 			{
@@ -358,9 +372,11 @@ sub load_ortho_schema
 {
 	my ($ortho_config, $log_dir) = @_;
 
+	print "\n=Stage: Load OrthoMCL Database Schema=\n";
+
 	my $ortho_log = "$log_dir/orthomclSchema.log";
 	
-	my $orthobin = $AutoConfig::params{'orthomcl'}{'bin'};
+	my $orthobin = $orthoParams->{'path'}->{'orthomcl'};
 	my $loadbin = "$orthobin/orthomclInstallSchema";
 
 	my $command = "$loadbin \"$ortho_config\" \"$ortho_log\"";
@@ -377,12 +393,14 @@ sub parseblast
 
 	my $parse_blast_log = "$log_dir/parseBlast.log";
 
+	print "\n=Stage: Parse Blast Results=\n";
+
 	my $command = "cat $blast_results_dir/$blast_result_name.* > $blast_load_dir/$blast_all_results";
 
 	print "$command\n";
 	system("$command 2> $parse_blast_log") == 0 or die "Could not concat blast results to $blast_load_dir/$blast_all_results";
 
-	my $orthobin = $AutoConfig::params{'orthomcl'}{'bin'};
+	my $orthobin = $orthoParams->{'path'}->{'orthomcl'};
 	my $ortho_parser = "$orthobin/orthomclBlastParser";
 
 	$command = "$ortho_parser \"$blast_load_dir/$blast_all_results\" \"$fasta_input\" > \"$blast_load_dir/similarSequences.txt\"";
@@ -399,8 +417,10 @@ sub ortho_load
 	my $ortho_log = "$log_dir/orthomclLoadBlast.log";
 	my $similar_seqs = "$blast_load_dir/similarSequences.txt";
 
-        my $orthobin = $AutoConfig::params{'orthomcl'}{'bin'};
+        my $orthobin = $orthoParams->{'path'}->{'orthomcl'};
         my $loadbin = "$orthobin/orthomclLoadBlast";
+
+	print "\n=Stage: Load Blast Results=\n";
 
 	my $command = "$loadbin \"$ortho_config\" \"$similar_seqs\"";
 
@@ -416,9 +436,11 @@ sub ortho_pairs
 
 	my $ortho_log = "$log_dir/orthomclPairs.log";
 
-        my $orthobin = $AutoConfig::params{'orthomcl'}{'bin'};
+        my $orthobin = $orthoParams->{'path'}->{'orthomcl'};
 
 	my $pairsbin = "$orthobin/orthomclPairs";
+
+	print "\n=Stage: OrthoMCL Pairs=\n";
 
 	my $command = "$pairsbin \"$ortho_config\" \"$ortho_log\" cleanup=yes";
 
@@ -434,9 +456,11 @@ sub ortho_dump_pairs
 
 	my $ortho_log = "$log_dir/orthomclDumpPairs.log";
 
-        my $orthobin = $AutoConfig::params{'orthomcl'}{'bin'};
+        my $orthobin = $orthoParams->{'path'}->{'orthomcl'};
 
 	my $pairsbin = "$orthobin/orthomclDumpPairsFiles";
+
+	print "\n=Stage: OrthoMCL Dump Pairs=\n";
 
 	my $cwd = getcwd;
 	chdir $pairs_dir or die "Could not change to directory $pairs_dir";
@@ -459,7 +483,9 @@ sub run_mcl
 	my $mcl_input = "$pairs_dir/mclInput";
 	my $mcl_output = "$pairs_dir/mclOutput";
 
-        my $mcl_bin = $AutoConfig::params{'bin'}{'mcl'};
+        my $mcl_bin = $orthoParams->{'path'}->{'mcl'};
+
+	print "\n=Stage: Run MCL=\n";
 
 	my $command = "$mcl_bin \"$mcl_input\" --abc -I 1.5 -o \"$mcl_output\"";
 
@@ -477,9 +503,11 @@ sub mcl_to_groups
 	my $mcl_output = "$pairs_dir/mclOutput";
 	my $groups_file = "$groups_dir/groups.txt";
 
-        my $orthobin = $AutoConfig::params{'orthomcl'}{'bin'};
+        my $orthobin = $orthoParams->{'path'}->{'orthomcl'};
 
 	my $groupsbin = "$orthobin/orthomclMclToGroups";
+
+	print "\n=Stage: MCL to Groups=\n";
 
 	my $command = "$groupsbin group_ 1 < \"$mcl_output\" > \"$groups_file\"";
 
@@ -495,12 +523,14 @@ sub mcl_to_groups
 my ($input_dir, $output_dir);
 my $split_number;
 my $orthomcl_config;
-my $help;
+my $main_config;
 my $compliant;
+my $help;
 
 if (!GetOptions(
 	'i|input-dir=s' => \$input_dir,
 	'm|orthomcl-config=s' => \$orthomcl_config,
+	'c|config=s' => \$main_config,
 	'o|output-dir=s' => \$output_dir,
 	's|split=i' => \$split_number,
 	'compliant' => \$compliant,
@@ -515,12 +545,13 @@ if (defined $help and $help)
 	exit 0;
 }
 
-check_dependencies();
-print "Starting pipeline on: ".localtime."\n";
+print "Starting OrthoMCL pipeline on: ".(localtime)."\n";
 
 die "Error: no input-dir defined\n".usage if (not defined $input_dir);
 die "Error: input-dir not a directory\n".usage if (not -d $input_dir);
 die "Error: output-dir not defined\n".usage if (not defined $output_dir);
+die "Error: main config not defined\n".usage if (not defined $main_config);
+die "Error: main config=$main_config does not exist\n".usage if (not -e $main_config);
 die "Error: orthomcl-config not defined\n".usage if (not defined $orthomcl_config);
 die "Error: orthomcl-config=$orthomcl_config does not exist" if (not -e $orthomcl_config);
 
@@ -528,6 +559,12 @@ if (defined $split_number)
 {
 	die "Error: split value = $split_number is invalid" if ($split_number !~ /\d+/ or $split_number <= 0);
 }
+
+# read config
+my $yaml_tmp = YAML::Tiny->new; # gets rid of warning about YAML::Tiny used only once
+my $yaml = YAML::Tiny->read($main_config) or die "Could not read config file: ".$YAML::Tiny->errstr;
+$orthoParams = $yaml->[0] or die "Improperly formatted config file $main_config";
+check_dependencies();
 
 $input_dir = abs_path($input_dir);
 $output_dir = abs_path($output_dir);
@@ -552,6 +589,7 @@ else
 {
 	mkdir $output_dir;
 }
+
 
 my $log_dir = "$output_dir/log";
 my $blast_log_dir = "$output_dir/log/blast";
@@ -594,4 +632,4 @@ ortho_dump_pairs($orthomcl_config, $pairs_dir, $log_dir);
 run_mcl($pairs_dir, $log_dir);
 mcl_to_groups($pairs_dir, $groups_dir, $log_dir);
 
-print "Orthomcl Pipeline ended on ".localtime."\n";
+print "Orthomcl Pipeline ended on ".(localtime)."\n";

@@ -11,8 +11,6 @@ use warnings;
 
 use FindBin;
 
-use lib $FindBin::Bin;
-
 use YAML::Tiny;
 use Schedule::DRMAAc qw( :all );
 use Getopt::Long;
@@ -717,9 +715,6 @@ if (defined $split_number)
 handle_config($default_config_path, $main_config);
 check_dependencies();
 
-$input_dir = abs_path($input_dir);
-$output_dir = abs_path($output_dir);
-
 if (not defined $split_number)
 {
 	$split_number = $orthoParams->{'split'};
@@ -750,6 +745,9 @@ else
 {
 	mkdir $output_dir;
 }
+
+$input_dir = abs_path($input_dir);
+$output_dir = abs_path($output_dir);
 
 my $log_dir = "$output_dir/log";
 my $blast_log_dir = "$output_dir/log/blast";
@@ -802,3 +800,4 @@ print "Orthomcl Pipeline ended on ".(localtime)."\n";
 my $end_time = time;
 
 printf "Took %0.2f minutes to complete\n",(($end_time-$begin_time)/60);
+print "Parameters used can be viewed in $orthomcl_config and $log_dir/run.properties\n";

@@ -31,7 +31,7 @@ my $orthoParams; # stores main parameters
 
 sub usage
 {
-"Usage: ".basename($0)." -i [input dir] -o [output dir] -m [orthmcl config] [Options]
+"Usage: nml_automcl -i [input dir] -o [output dir] -m [orthmcl config] [Options]
 	Options:
 	-i|--input-dir: The input directory containing the files to process.
 	-o|--output-dir: The output directory for the job.
@@ -44,21 +44,21 @@ sub usage
 	-h|--help:  Show help.
 
 	Examples:
-	".basename($0)." -i input/ -o output/ -m orthomcl.config
+	nml_automcl -i input/ -o output/ -m orthomcl.config
 		Runs orthomcl using the input fasta files under input/ and orthomcl.confg as config file.
 		Places data in output/.  Gets other parameters (blast, etc) from default config file.
 
-	".basename($0)." -i input/ -o output/ -m orthomcl.config -c automcl.conf
+	nml_automcl -i input/ -o output/ -m orthomcl.config -c automcl.conf
 		Runs orthomcl using the given input/output directories.  Overrides parameters (blast, etc)
 		from file automcl.conf.
 
-	".basename($0)." --print-config
+	nml_automcl --print-config
 		Prints default automcl.conf config file (which can then be changed).
 
-	".basename($0)." --print-orthomcl-config
+	nml_automcl --print-orthomcl-config
 		Prints orthomcl example config file which must be changed to properly run.
 
-	".basename($0)." -i input/ -o output/ -m orthomcl.confg --compliant
+	nml_automcl -i input/ -o output/ -m orthomcl.confg --compliant
 		Runs orthmcl with the given input/output/config files.
 		Skips the orthomclAdjustFasta stage on input files.\n";
 }

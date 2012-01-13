@@ -35,7 +35,8 @@ sub usage
 	-c|--config:  The main config file (optional, overrides default config).
 	-m|--orthomcl-config:  The orthomcl config file
 	--compliant:  If fasta data is already compliant (headers match, etc).
-	--print-config: Prints default config file being used
+	--print-config: Prints default config file being used.
+	--print-orthomcl-config:  Prints example orthomcl config file.
 	-h|--help:  Show help.\n";
 }
 
@@ -621,9 +622,11 @@ my $orthomcl_config;
 my $main_config;
 my $compliant;
 my $print_config;
+my $print_orthomcl_config;
 my $help;
 
 my $default_config_path = "$script_dir/etc/automcl.conf";
+my $example_ortho_config = "$script_dir/etc/orthomcl.config.example";
 
 if (!GetOptions(
 	'i|input-dir=s' => \$input_dir,
@@ -633,6 +636,7 @@ if (!GetOptions(
 	's|split=i' => \$split_number,
 	'compliant' => \$compliant,
 	'print-config' => \$print_config,
+	'print-orthomcl-config' => \$print_orthomcl_config,
 	'h|help' => \$help))
 {
 	die "$!".usage;
@@ -649,6 +653,19 @@ if (defined $print_config and $print_config)
 	die "No config file found at $default_config_path" if (not -e $default_config_path);
 
 	open(my $ch, "<$default_config_path") or die "Could not open $default_config_path: $!";
+	while(<$ch>)
+	{
+		print $_;
+	}
+	close($ch);
+	exit 0;
+}
+
+if (defined $print_orthomcl_config and $print_orthomcl_config)
+{
+	die "No config file found at $example_ortho_config" if (not -e $example_ortho_config);
+
+	open(my $ch, "<$example_ortho_config") or die "Could not open $example_ortho_config: $!";
 	while(<$ch>)
 	{
 		print $_;

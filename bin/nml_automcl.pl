@@ -294,7 +294,7 @@ sub split_fasta
 
 	print "\n=Stage: Split Fasta=\n";
 
-	require("$script_dir/lib/split.pl");
+	require("$script_dir/../lib/split.pl");
 	print "splitting $input_file into $split_number pieces\n";
 	Split::run($input_file,$split_number,$input_dir,$log);
 
@@ -648,8 +648,8 @@ my $print_config;
 my $print_orthomcl_config;
 my $help;
 
-my $default_config_path = "$script_dir/etc/automcl.conf";
-my $example_ortho_config = "$script_dir/etc/orthomcl.config.example";
+my $default_config_path = "$script_dir/../etc/automcl.conf";
+my $example_ortho_config = "$script_dir/../etc/orthomcl.config.example";
 
 if (!GetOptions(
 	'i|input-dir=s' => \$input_dir,

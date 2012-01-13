@@ -177,7 +177,7 @@ sub check_database
 	
 	if ($rv > 0)
 	{
-		print "Warning: some tables exist already in database $dbConnect, user=$dbLogin, name=$database_name. Do you want to remove (y/n)? ";
+		print "Warning: some tables exist already in database $dbConnect, user=$dbLogin, database_name=$database_name. Do you want to remove (y/n)? ";
 		my $response = <>;
 		chomp $response;
 		if (not ($response eq 'y' or $response eq 'Y' or ($response =~ /^yes$/i)))

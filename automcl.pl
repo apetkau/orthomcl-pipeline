@@ -398,6 +398,11 @@ sub parseblast
 
 	my $command = "cat $blast_results_dir/$blast_result_name.* > $blast_load_dir/$blast_all_results";
 
+	# make sure files we merge are all in sync on filesystem
+	opendir(my $dh, $blast_results_dir);
+	closedir($dh);
+	#
+
 	print "$command\n";
 	system("$command 2> $parse_blast_log") == 0 or die "Could not concat blast results to $blast_load_dir/$blast_all_results";
 
@@ -649,6 +654,7 @@ if (defined $print_config and $print_config)
 }
 
 print "Starting OrthoMCL pipeline on: ".(localtime)."\n";
+my $begin_time = time;
 
 die "Error: no input-dir defined\n".usage if (not defined $input_dir);
 die "Error: input-dir not a directory\n".usage if (not -d $input_dir);
@@ -742,3 +748,6 @@ run_mcl($pairs_dir, $log_dir);
 mcl_to_groups($pairs_dir, $groups_dir, $log_dir);
 
 print "Orthomcl Pipeline ended on ".(localtime)."\n";
+my $end_time = time;
+
+printf "Took %0.2f minutes to complete\n",(($end_time-$begin_time)/60);

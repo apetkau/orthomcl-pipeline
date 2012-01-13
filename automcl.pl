@@ -56,6 +56,7 @@ sub check_dependencies
 	my $orthomclbin = $orthoParams->{'path'}->{'orthomcl'};
 	my $formatdbbin = $orthoParams->{'path'}->{'formatdb'};
 	my $blastallbin = $orthoParams->{'path'}->{'blastall'};
+	my $mclbin = $orthoParams->{'path'}->{'mcl'};
 
 	die "Error: orthomcl bin dir not defined" if (not defined $orthomclbin);
 	die "Error: orthomcl bin dir \"$orthomclbin\" does not exist" if (not -e $orthomclbin);
@@ -67,6 +68,9 @@ sub check_dependencies
 
 	die "Error: blastall location not defined" if (not defined $blastallbin);
 	die "Error: blastall=\"$blastallbin\" does not exist" if (not -e $blastallbin);
+
+	die "Error: mcl location not defined" if (not defined $mclbin);
+	die "Error: mcl=\"$mclbin\" does not exist" if (not -e $mclbin);
 }
 
 sub check_database
@@ -676,8 +680,13 @@ $output_dir = abs_path($output_dir);
 
 if (not defined $split_number)
 {
-	$split_number = 10;
-	print STDERR "Warning: split value not defined, defaulting to $split_number\n";
+	$split_number = $orthoParams->{'split'};
+
+	if (not defined $split_number or ($split_number !~ /^\d+$/))
+	{
+		$split_number = 10;
+		print STDERR "Warning: split value not defined, defaulting to $split_number\n";
+	}
 }
 
 if (defined $main_config and not (-e $main_config))

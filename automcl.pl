@@ -27,14 +27,15 @@ my $orthoParams; # stores main parameters
 
 sub usage
 {
-"Usage: ".basename($0)." -i [input dir] -o [output dir] -c [main config] -m [orthmcl config] [Options]
+"Usage: ".basename($0)." -i [input dir] -o [output dir] -m [orthmcl config] [Options]
 	Options:
 	-i|--input-dir: The input directory containing the files to process.
 	-o|--output-dir: The output directory for the job.
 	-s|--split:  The number of times to split the fasta files for blasting
-	-c|--config:  The main config file.
+	-c|--config:  The main config file (optional, overrides default config).
 	-m|--orthomcl-config:  The orthomcl config file
 	--compliant:  If fasta data is already compliant (headers match, etc).
+	--print-config: Prints default config file being used
 	-h|--help:  Show help.\n";
 }
 
@@ -518,6 +519,91 @@ sub mcl_to_groups
 	print "\n";
 }
 
+sub merge_config_params
+{
+	my ($default_params, $main_params) = @_;
+
+	return undef if (not defined $default_params and not defined $main_params);
+	return $default_params if (not defined $main_params);
+	return $main_params if (not defined $default_params);
+
+	return merge_hash_r($default_params, $main_params);
+}
+
+sub merge_hash_r
+{
+	my ($a, $b) = @_;
+
+	my $new_hash = {};
+	
+	foreach my $key (keys %$a)
+	{
+		$new_hash->{$key} = $a->{$key};
+	}
+	
+	foreach my $key (keys %$b)
+	{
+		my $value_b = $b->{$key};
+		my $value_a = $new_hash->{$key};
+
+		# if both defined, must merge
+		if (defined $value_a and defined $value_b)
+		{
+			# if the value is another hash, go through another level
+			if (defined $value_a and (ref $value_a eq 'HASH'))
+			{
+				$new_hash->{$key} = merge_hash_r($value_a,$value_b);
+			} # else if not another hash, overwrite a with b
+			else
+			{
+				$new_hash->{$key} = $value_b;
+			}
+		} # if only b defined, copy over to a
+		elsif (defined $value_b)
+		{
+			$new_hash->{$key} = $value_b;
+		}
+		# else if only a defined, do nothing
+	}
+
+	return $new_hash;
+}
+
+sub handle_config
+{
+	my ($default_config, $main_config) = @_;
+
+	my ($default_params,$main_params);
+	if (defined $default_config and (-e $default_config))
+	{
+		my $yaml = YAML::Tiny->read($default_config) or die "Could not read config file ($default_config): ".YAML::Tiny->errstr;
+		$default_params = $yaml->[0] or die "Improperly formatted config file $default_config";
+	}
+
+	if (defined $main_config and (-e $main_config))
+	{
+		my $yaml = YAML::Tiny->read($main_config) or die "Could not read config file: ".YAML::Tiny->errstr;
+		$main_params = $yaml->[0] or die "Improperly formatted config file $main_config";
+	}
+
+	if (not defined $default_params and not defined $main_params)
+	{
+		die "No parameter file defined\n";
+	}
+	elsif (not defined $default_params)
+	{
+		$orthoParams = $main_params;
+	}
+	elsif (not defined $main_params)
+	{
+		$orthoParams = $default_params;
+	}
+	else
+	{
+		$orthoParams = merge_config_params($default_params, $main_params);
+	}
+}
+
 ##### MAIN #####
 
 my ($input_dir, $output_dir);
@@ -525,7 +611,10 @@ my $split_number;
 my $orthomcl_config;
 my $main_config;
 my $compliant;
+my $print_config;
 my $help;
+
+my $default_config_path = "$script_dir/etc/automcl.conf";
 
 if (!GetOptions(
 	'i|input-dir=s' => \$input_dir,
@@ -534,6 +623,7 @@ if (!GetOptions(
 	'o|output-dir=s' => \$output_dir,
 	's|split=i' => \$split_number,
 	'compliant' => \$compliant,
+	'print-config' => \$print_config,
 	'h|help' => \$help))
 {
 	die "$!".usage;
@@ -545,13 +635,24 @@ if (defined $help and $help)
 	exit 0;
 }
 
+if (defined $print_config and $print_config)
+{
+	die "No config file found at $default_config_path" if (not -e $default_config_path);
+
+	open(my $ch, "<$default_config_path") or die "Could not open $default_config_path: $!";
+	while(<$ch>)
+	{
+		print $_;
+	}
+	close($ch);
+	exit 0;
+}
+
 print "Starting OrthoMCL pipeline on: ".(localtime)."\n";
 
 die "Error: no input-dir defined\n".usage if (not defined $input_dir);
 die "Error: input-dir not a directory\n".usage if (not -d $input_dir);
 die "Error: output-dir not defined\n".usage if (not defined $output_dir);
-die "Error: main config not defined\n".usage if (not defined $main_config);
-die "Error: main config=$main_config does not exist\n".usage if (not -e $main_config);
 die "Error: orthomcl-config not defined\n".usage if (not defined $orthomcl_config);
 die "Error: orthomcl-config=$orthomcl_config does not exist" if (not -e $orthomcl_config);
 
@@ -561,9 +662,7 @@ if (defined $split_number)
 }
 
 # read config
-my $yaml_tmp = YAML::Tiny->new; # gets rid of warning about YAML::Tiny used only once
-my $yaml = YAML::Tiny->read($main_config) or die "Could not read config file: ".$YAML::Tiny->errstr;
-$orthoParams = $yaml->[0] or die "Improperly formatted config file $main_config";
+handle_config($default_config_path, $main_config);
 check_dependencies();
 
 $input_dir = abs_path($input_dir);
@@ -573,6 +672,11 @@ if (not defined $split_number)
 {
 	$split_number = 10;
 	print STDERR "Warning: split value not defined, defaulting to $split_number\n";
+}
+
+if (defined $main_config and not (-e $main_config))
+{
+	die "Error: config file $main_config does not exist\n".usage;
 }
 
 if (-e $output_dir)
@@ -589,7 +693,6 @@ else
 {
 	mkdir $output_dir;
 }
-
 
 my $log_dir = "$output_dir/log";
 my $blast_log_dir = "$output_dir/log/blast";
@@ -609,6 +712,12 @@ mkdir $blast_results_dir if (not -e $blast_results_dir);
 mkdir $blast_load_dir if (not -e $blast_load_dir);
 mkdir $pairs_dir if (not -e $pairs_dir);
 mkdir $groups_dir if (not -e $groups_dir);
+
+# write out properties used
+my $config_out = YAML::Tiny->new;
+$config_out->[0] = $orthoParams;
+$config_out->write("$log_dir/run.properties");
+$config_out = undef;
 
 check_database($orthomcl_config, $log_dir);
 load_ortho_schema($orthomcl_config, $log_dir);

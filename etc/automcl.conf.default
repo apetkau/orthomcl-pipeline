@@ -1,0 +1,19 @@
+# move to automcl.conf
+%YAML 1.1
+---
+path:
+	orthomcl: /path/to/orthomcl/bin
+	formatdb: /path/to/formatdb
+	blastall: /path/to/blastall
+	mcl: /path/to/mcl
+
+# other default parameters
+filter:
+	min_length: 10
+	max_percent_stop: 20
+
+blast:
+	F: m S
+	v: 100000
+	b: 100000
+	e: 1e-5

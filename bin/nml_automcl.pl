@@ -242,14 +242,19 @@ sub validate_files
 		my $base = basename($file, @valid_fasta_extensions);
 		if ($base ne $file)
 		{
-			print "Validating $file ...\n";
+			print "Validating $file ... ";
 			my $file_path = "$input_dir/$file";
 			my $file_io = Bio::SeqIO->new(-file => $file_path, 'Fasta') or die "Could not open up file $file_path: $!";
+			my $seq_count = 0;
 			while (my $seq = $file_io->next_seq)
 			{
 				die "Error: file $file_path contains a sequence (".$seq->display_id.") with an undefined alphabet" if (not defined $seq->alphabet);
 				die "Error: file $file_path contains a sequence (".$seq->display_id.") containing non-protein alphabet (".$seq->alphabet.")" if ($seq->alphabet ne 'protein');
+
+				$seq_count++;
 			}
+
+			print "$seq_count sequences\n";
 
 			$file_count++;
 		}

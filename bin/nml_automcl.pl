@@ -554,10 +554,21 @@ sub run_mcl
 	my $mcl_output = "$pairs_dir/mclOutput";
 
         my $mcl_bin = $orthoParams->{'path'}->{'mcl'};
+	my $mcl_inflation = $orthoParams->{'mcl'}->{'inflation'};
+	if (not defined $mcl_inflation)
+	{
+		print STDERR "Warning: mcl inflation value not defined, defaulting to 1.5";
+		$mcl_inflation = 1.5;
+	}
+	elsif ($mcl_inflation !~ /^\d+\.?\d*$/)
+	{
+		print STDERR "Warning: mcl inflation value ($mcl_inflation) is invalid, defaulting to 1.5";
+		$mcl_inflation = 1.5;
+	}
 
 	print "\n=Stage: Run MCL=\n";
 
-	my $command = "$mcl_bin \"$mcl_input\" --abc -I 1.5 -o \"$mcl_output\"";
+	my $command = "$mcl_bin \"$mcl_input\" --abc -I $mcl_inflation -o \"$mcl_output\"";
 
 	print "$command\n";
 	system("$command 1>$ortho_log 2>&1") == 0 or die "Could not execute $command. See $ortho_log\n";

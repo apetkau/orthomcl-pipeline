@@ -20,6 +20,9 @@ use File::Copy;
 use File::Path;
 use DBI;
 use DBD::mysql;
+use Bio::SeqIO;
+
+my @valid_fasta_extensions = ('.faa','.fasta');
 
 my $script_dir = $FindBin::Bin;
 
@@ -225,6 +228,39 @@ sub check_database
 	$dbh->disconnect;
 }
 
+sub validate_files
+{
+	my ($input_dir, $log_dir) = @_;
+
+	print "\n=Stage: Validate Files =\n";
+
+	opendir(my $dh, $input_dir) or die "Could not open directory $input_dir: $!";
+	my $file = readdir($dh);
+	my $file_count;
+	while (defined $file)
+	{
+		my $base = basename($file, @valid_fasta_extensions);
+		if ($base ne $file)
+		{
+			print "Validating $file ...\n";
+			my $file_path = "$input_dir/$file";
+			my $file_io = Bio::SeqIO->new(-file => $file_path, 'Fasta') or die "Could not open up file $file_path: $!";
+			while (my $seq = $file_io->next_seq)
+			{
+				die "Error: file $file_path contains a sequence (".$seq->display_id.") with an undefined alphabet" if (not defined $seq->alphabet);
+				die "Error: file $file_path contains a sequence (".$seq->display_id.") containing non-protein alphabet (".$seq->alphabet.")" if ($seq->alphabet ne 'protein');
+			}
+
+			$file_count++;
+		}
+
+		$file = readdir($dh);
+	}
+	closedir($dh);
+
+	print "Validated $file_count files\n";
+}
+
 sub adjust_fasta
 {
 	my ($input_dir, $output, $log_dir) = @_;
@@ -242,7 +278,7 @@ sub adjust_fasta
 	my $file = readdir($dh);
 	while (defined $file)
 	{
-		my $base = basename($file, ('.faa','.fasta'));
+		my $base = basename($file, @valid_fasta_extensions);
 
 		if ($base ne $file) # if file had correct extension
 		{
@@ -697,8 +733,6 @@ if (defined $print_orthomcl_config and $print_orthomcl_config)
 	exit 0;
 }
 
-print "Starting OrthoMCL pipeline on: ".(localtime)."\n";
-my $begin_time = time;
 
 die "Error: no input-dir defined\n".usage if (not defined $input_dir);
 die "Error: input-dir not a directory\n".usage if (not -d $input_dir);
@@ -774,6 +808,10 @@ $config_out->[0] = $orthoParams;
 $config_out->write("$log_dir/run.properties");
 $config_out = undef;
 
+print "Starting OrthoMCL pipeline on: ".(localtime)."\n";
+my $begin_time = time;
+
+validate_files($input_dir, $log_dir);
 check_database($orthomcl_config, $log_dir);
 load_ortho_schema($orthomcl_config, $log_dir);
 if (defined $compliant && $compliant)
@@ -801,3 +839,4 @@ my $end_time = time;
 
 printf "Took %0.2f minutes to complete\n",(($end_time-$begin_time)/60);
 print "Parameters used can be viewed in $orthomcl_config and $log_dir/run.properties\n";
+print "Groups file can be found in $groups_dir/groups.txt\n";

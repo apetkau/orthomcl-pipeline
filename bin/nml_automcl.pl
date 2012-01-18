@@ -790,6 +790,11 @@ if (-e $output_dir)
     {
         die "Directory \"$output_dir\" already exists, could not continue.";
     }
+    else
+    {
+        rmtree($output_dir) or die "Could not delete $output_dir before running orthomcl: $!";
+	mkdir $output_dir;
+    }
 }
 else
 {

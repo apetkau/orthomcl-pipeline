@@ -230,13 +230,14 @@ sub check_database
 
 sub validate_files
 {
-	my ($input_dir, $log_dir) = @_;
+	my ($input_dir, $compliant, $log_dir) = @_;
 
 	print "\n=Stage: Validate Files =\n";
 
 	opendir(my $dh, $input_dir) or die "Could not open directory $input_dir: $!";
 	my $file = readdir($dh);
 	my $file_count;
+	my %seq_names; # checking uniqueness of seq names
 	while (defined $file)
 	{
 		my $base = basename($file, @valid_fasta_extensions);
@@ -246,8 +247,66 @@ sub validate_files
 			my $file_path = "$input_dir/$file";
 			my $file_io = Bio::SeqIO->new(-file => $file_path, 'Fasta') or die "Could not open up file $file_path: $!";
 			my $seq_count = 0;
+			my %gene_names; # checking uniqueness of gene
+			my $current_seq_name = $base;
+
+			if (not exists $seq_names{$current_seq_name})
+			{
+				$seq_names{$current_seq_name} = 1;
+			}
+			else
+			{
+				die "Error: file $input_dir/$file uses already existant sequence name $current_seq_name";
+			}
+
 			while (my $seq = $file_io->next_seq)
 			{
+				my $seq_id = $seq->display_id;
+				my $error_message = "Error: file $input_dir/$file contains invalid header for \"$seq_id\"";
+
+				# check headers
+				if ($compliant)
+				{
+					my ($name, $gene) = ($seq_id =~ /^([^\|]+)\|(\S+)/);
+					my $remove_message = "Perhaps try removing --compliant to format files.";
+
+					die $error_message.": missing sequence name.\n$remove_message" if (not defined $name);
+					die $error_message.": sequence name not equal to $current_seq_name.\n$remove_message" if ($name ne $current_seq_name);
+					die $error_message.": missing gene name.\n$remove_message" if ((not defined $gene) or $gene eq '');
+
+					if (not exists $gene_names{$gene})
+					{
+						$gene_names{$gene} = 1;
+					}
+					else
+					{
+						die $error_message.": gene \"$gene\" not unique across file";
+					}
+				}
+				else
+				{
+					die $error_message.": files not marked as compliant but found compliant header.\n"
+							  ."Perhaps try adding --compliant, or checking files." if ($seq_id =~ /^[^\|]+\|\S+/);
+					my ($gene) = ($seq_id =~ /^(\S+)/);
+
+					if ((not defined $gene) or $gene eq '')
+					{
+						die $error_message.": missing gene name";
+					}
+					else
+					{
+						if (not exists $gene_names{$gene})
+						{
+							$gene_names{$gene} = 1;
+						}
+						else
+						{
+							die $error_message.": gene \"$gene\" not unique across file";
+						}
+					}
+				}
+
+				# check sequence
 				die "Error: file $file_path contains a sequence (".$seq->display_id.") with an undefined alphabet" if (not defined $seq->alphabet);
 				die "Error: file $file_path contains a sequence (".$seq->display_id.") containing non-protein alphabet (".$seq->alphabet.")" if ($seq->alphabet ne 'protein');
 
@@ -832,7 +891,7 @@ $config_out = undef;
 print "Starting OrthoMCL pipeline on: ".(localtime)."\n";
 my $begin_time = time;
 
-validate_files($input_dir, $log_dir);
+validate_files($input_dir, $compliant, $log_dir);
 check_database($orthomcl_config, $log_dir);
 load_ortho_schema($orthomcl_config, $log_dir);
 if (defined $compliant && $compliant)

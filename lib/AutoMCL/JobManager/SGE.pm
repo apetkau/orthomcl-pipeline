@@ -18,6 +18,10 @@ sub new
 	my $self = $class->SUPER::new($script_dir);
 	bless($self,$class);
 
+        # get perl environment variable to pass to jobs run on cluster nodes
+        my $perl_libs = $ENV{'PERL5LIB'};
+        $self->{'_perl_libs'} = $perl_libs if (defined $perl_libs);
+
 	return $self;
 }
 
@@ -44,6 +48,8 @@ sub submit_job
         die "Error: undefined stdout log" if (not defined $stdout_log);
         die "Error: undefined stderr log" if (not defined $stderr_log);
 
+	my $perl_libs = $self->{'_perl_libs'};
+
         my $task_num = 0;
         my @job_ids;
 
@@ -59,6 +65,12 @@ sub submit_job
 
         ($drmerr,$jt,$drmdiag) = drmaa_allocate_job_template();
         die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
+
+	if (defined $perl_libs)
+        {
+             	($drmerr,$drmdiag) = drmaa_set_vector_attribute($jt,$DRMAA_V_ENV,["PERL5LIB=$perl_libs"]);
+               	die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
+        }
 
         ($drmerr,$drmdiag) = drmaa_set_attribute($jt,$DRMAA_REMOTE_COMMAND,$command); #sets the command for the job to be run
         die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
@@ -109,6 +121,8 @@ sub submit_job_array
         die "Error: max_threads=$max_threads not valid integer" if ($max_threads !~ /^\d+$/);
         die "Error: max_threads is 0" if ($max_threads eq 0);
 
+	my $perl_libs = $self->{'_perl_libs'};
+
 	my $command_size = scalar(@$command_array);
         if (defined $params_array)
         {
@@ -137,6 +151,12 @@ sub submit_job_array
 
         	($drmerr,$jt,$drmdiag) = drmaa_allocate_job_template();
 		die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
+
+		if (defined $perl_libs)
+                {
+                	($drmerr,$drmdiag) = drmaa_set_vector_attribute($jt,$DRMAA_V_ENV,["PERL5LIB=$perl_libs"]);
+                	die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
+                }
 
 		($drmerr,$drmdiag) = drmaa_set_attribute($jt,$DRMAA_REMOTE_COMMAND,$curr_command); #sets the command for the job to be run
 		die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;

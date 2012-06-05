@@ -1,7 +1,12 @@
 AutoMCL is used to automate running of OrthoMCL
 Dependencies:
 	OrthoMCL
+		BLAST (blastall, formatdb)
+		MCL
+
 	Perl
+
+	SGE if using SGE Scheduler (set in etc/automcl.conf)
 
 Perl Libraries to install:
 	BioPerl
@@ -18,6 +23,6 @@ Libraries can all be installed using CPAN or CPANM with:
 
 Need to modify parameters in etc/automcl.conf.default and rename to automcl.conf
 
-Need to modify nml_automcl.examlple in bin/ to setup environment variables, and rename to nml_automcl.
+Need to modify nml_automcl.example in bin/ to setup environment variables, and rename to nml_automcl.
 
 Need to add bin/ to the PATH.

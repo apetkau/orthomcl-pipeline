@@ -11,8 +11,10 @@ use warnings;
 
 use FindBin;
 
+use lib $FindBin::Bin.'/../lib';
+
+use File::Spec;
 use YAML::Tiny;
-use Schedule::DRMAAc qw( :all );
 use Getopt::Long;
 use Cwd qw(getcwd abs_path);
 use File::Basename qw(basename dirname);
@@ -22,9 +24,14 @@ use DBI;
 use DBD::mysql;
 use Bio::SeqIO;
 
+my $job_runner = undef;
+
 my @valid_fasta_extensions = ('.faa','.fasta');
 
 my $script_dir = $FindBin::Bin;
+
+my $default_config_path = "$script_dir/../etc/automcl.conf";
+my $example_ortho_config = "$script_dir/../etc/orthomcl.config.example";
 
 my $all_fasta_name = 'goodProteins.fasta';
 my $blast_result_name = 'blast_results';
@@ -66,24 +73,13 @@ sub usage
 		Skips the orthomclAdjustFasta stage on input files.\n";
 }
 
-sub start_scheduler
-{
-	my ($drmerr, $drmdiag) = drmaa_init(undef);
-	die drmaa_strerror($drmerr),"\n",$drmdiag if ($drmerr);
-}
-
-sub stop_scheduler
-{
-        my ($drmerr,$drmdiag) = drmaa_exit();
-        die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
-}
-
 sub check_dependencies
 {
 	my $orthomclbin = $orthoParams->{'path'}->{'orthomcl'};
 	my $formatdbbin = $orthoParams->{'path'}->{'formatdb'};
 	my $blastallbin = $orthoParams->{'path'}->{'blastall'};
 	my $mclbin = $orthoParams->{'path'}->{'mcl'};
+	my $scheduler = $orthoParams->{'scheduler'};
 
 	die "Error: orthomcl bin dir not defined" if (not defined $orthomclbin);
 	die "Error: orthomcl bin dir \"$orthomclbin\" does not exist" if (not -e $orthomclbin);
@@ -98,6 +94,27 @@ sub check_dependencies
 
 	die "Error: mcl location not defined" if (not defined $mclbin);
 	die "Error: mcl=\"$mclbin\" does not exist" if (not -e $mclbin);
+
+	if (not defined $scheduler)
+	{
+		warn "scheduler not set. defaulting to using 'fork'";
+		require("$script_dir/../lib/AutoMCL/JobManager/Fork.pm");
+		$job_runner = new AutoMCL::JobManager::Fork;
+	}
+	elsif ($scheduler eq 'sge')
+	{
+ 		require("$script_dir/../lib/AutoMCL/JobManager/SGE.pm");
+		$job_runner = new AutoMCL::JobManager::SGE;
+	}
+	elsif ($scheduler eq 'fork')
+	{
+		require("$script_dir/../lib/AutoMCL/JobManager/Fork.pm");
+		$job_runner = new AutoMCL::JobManager::Fork;
+	}
+	else
+	{
+		die "Error: scheduler set to invalid parameter \"$scheduler\". Must be either 'sge' or 'fork'.  Check file $default_config_path or the passed config file.";
+	}
 }
 
 sub check_database
@@ -414,10 +431,10 @@ sub format_database
 
 	my $database = "$input_dir/$all_fasta_name";
 
-	my $command = "$formatdb -i \"$database\" -p T -l \"$formatdb_log\"";
-	print $command;
+	my $param_keys = ['-i', '-p', '-l'];
+	my $param_values = [$database, 'T', $formatdb_log];
 
-	system("$command 1>$log 2>&1") == 0 or die "Could not format database";
+	$job_runner->submit_job($formatdb, $param_keys, $param_values, "$log_dir/format-stdout.log", "$log_dir/format-stderr.log");
 
 	print "\n";
 }
@@ -429,72 +446,38 @@ sub perform_blast
 	my $blastbin = $orthoParams->{'path'}->{'blastall'};
 
 	my $command = $blastbin;
-	my $task_num = 0;
-	my @job_ids;
+	my @blast_commands;
+	my @blast_params_array;
 
 	print "\n=Stage: Perform Blast=\n";
 
 	# set autoflush
-	$| = 1;
-	print "performing blasts .";
-	start_scheduler();
+	print "performing blasts";
 
-        my ($drmerr,$jt,$drmdiag,$jobid,$drmps);
-
-	for ($task_num = 1; $task_num < $num_tasks; $task_num++)
+	# build up arrays defining jobs
+	for (my $task_num = 1; $task_num <= $num_tasks; $task_num++)
 	{
-		my $blast_params = ['-p', 'blastp', '-i', "$blast_dir/$all_fasta_name.$task_num", '-m', '8',
-				    '-d', "$blast_dir/$all_fasta_name", '-o', "$blast_results_dir/$blast_result_name.$task_num"];
+		my $blast_param_keys = ['-p', '-i', '-m', '-d', '-o'];
+		my $blast_param_values = ['blastp', "$blast_dir/$all_fasta_name.$task_num", '8', "$blast_dir/$all_fasta_name", "$blast_results_dir/$blast_result_name.$task_num"];
 		foreach my $key (keys %{$orthoParams->{'blast'}})
 		{
 			my $value = $orthoParams->{'blast'}->{$key};
 
 			if (defined $value)
 			{
-				push(@$blast_params, "-$key");
-				push(@$blast_params, $value);
+				push(@$blast_param_keys, "-$key");
+				push(@$blast_param_values, $value);
 			}
 		}
 
-        	($drmerr,$jt,$drmdiag) = drmaa_allocate_job_template();
-		die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
-
-		($drmerr,$drmdiag) = drmaa_set_attribute($jt,$DRMAA_REMOTE_COMMAND,$command); #sets the command for the job to be run
-		die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
-
-		($drmerr,$drmdiag) = drmaa_set_attribute($jt,$DRMAA_OUTPUT_PATH,":$blast_log_dir/stdout-$task_num.txt"); #sets the output directory for stdout
-	        die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
-	
-		($drmerr,$drmdiag) = drmaa_set_attribute($jt,$DRMAA_ERROR_PATH,":$blast_log_dir/stderr-$task_num.txt"); #sets the output directory for stdout
-	        die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
-	
-		($drmerr,$drmdiag) = drmaa_set_vector_attribute($jt,$DRMAA_V_ARGV,$blast_params); #sets the list of arguments to be applied to this job
-	        die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
-	
-		($drmerr,$jobid,$drmdiag) = drmaa_run_job($jt); #submits the job to whatever scheduler you're using
-	        die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
-
-		($drmerr,$drmdiag) = drmaa_delete_job_template($jt); #clears up the template for this job
-        	die drmaa_strerror($drmerr)."\n".$drmdiag if $drmerr;
-
-		push(@job_ids,$jobid);
+		push(@blast_commands,$command);
+		push(@blast_params_array,{'keys' => $blast_param_keys, 'values' => $blast_param_values});
 	}
 
-	# wait for jobs
-	do
-	{
-		($drmerr, $drmdiag) = drmaa_synchronize(\@job_ids, 10, 0);
-
-		die drmaa_strerror( $drmerr ) . "\n" . $drmdiag
-                                if $drmerr and $drmerr != $DRMAA_ERRNO_EXIT_TIMEOUT;
-
-		print ".";
-	} while ($drmerr == $DRMAA_ERRNO_EXIT_TIMEOUT);
+	# do jobs
+	$job_runner->submit_job_array(\@blast_commands,\@blast_params_array,"$blast_log_dir/stdout.blast","$blast_log_dir/stderr.blast",$num_tasks);
 
 	print "done\n\n";
-	$|=0;
-
-	stop_scheduler();
 }
 
 sub load_ortho_schema
@@ -508,10 +491,12 @@ sub load_ortho_schema
 	my $orthobin = $orthoParams->{'path'}->{'orthomcl'};
 	my $loadbin = "$orthobin/orthomclInstallSchema";
 
-	my $command = "$loadbin \"$ortho_config\" \"$ortho_log\"";
+	my $abs_ortho_config = File::Spec->rel2abs($ortho_config);
 
-	print "$command\n";
-	system("$command 1>$ortho_log 2>&1") == 0 or die "Could not load orthomcl database schema: see $ortho_log";
+	my $param_keys = [$abs_ortho_config, $ortho_log];
+	my $param_values = [undef, undef];
+
+	$job_runner->submit_job($loadbin, $param_keys, $param_values, "$log_dir/loadschema.stdout.log", "$log_dir/loadschema.stderr.log");
 
 	print "\n";
 }
@@ -537,10 +522,9 @@ sub parseblast
 	my $orthobin = $orthoParams->{'path'}->{'orthomcl'};
 	my $ortho_parser = "$orthobin/orthomclBlastParser";
 
-	$command = "$ortho_parser \"$blast_load_dir/$blast_all_results\" \"$fasta_input\" > \"$blast_load_dir/similarSequences.txt\"";
-	print "$command\n";
-	system("$command 2>> $parse_blast_log") == 0 or die "Could not run orthomclBlastParser. See $parse_blast_log";
-
+	my $param_keys = ["$blast_load_dir/$blast_all_results", "$fasta_input"];
+	my $param_values = [undef, undef];
+	$job_runner->submit_job($ortho_parser, $param_keys, $param_values, "$blast_load_dir/similarSequences.txt", $parse_blast_log);
 	print "\n";
 }
 
@@ -556,10 +540,11 @@ sub ortho_load
 
 	print "\n=Stage: Load Blast Results=\n";
 
-	my $command = "$loadbin \"$ortho_config\" \"$similar_seqs\"";
+	my $abs_ortho_config = File::Spec->rel2abs($ortho_config);
 
-	print "$command\n";
-	system("$command 1>$ortho_log 2>&1") == 0 or die "Could not load $similar_seqs into database. See $ortho_log";
+	my $param_keys = ["$abs_ortho_config", "$similar_seqs"];
+	my $param_values = [undef, undef];
+	$job_runner->submit_job($loadbin, $param_keys, $param_values, $ortho_log, "$log_dir/orthomclLoadBlast.err.log");
 
 	print "\n";
 }
@@ -576,10 +561,12 @@ sub ortho_pairs
 
 	print "\n=Stage: OrthoMCL Pairs=\n";
 
-	my $command = "$pairsbin \"$ortho_config\" \"$ortho_log\" cleanup=yes";
+	my $abs_ortho_config = File::Spec->rel2abs($ortho_config);
 
-	print "$command\n";
-	system($command) == 0 or die "Could not execute $command\n";
+	my $param_keys = ["$abs_ortho_config", "$ortho_log", "cleanup=yes"];
+	my $param_values = [undef, undef, undef];
+
+	$job_runner->submit_job($pairsbin, $param_keys, $param_values, "$ortho_log.stdout", "$ortho_log.stderr");
 
 	print "\n";
 }
@@ -632,10 +619,10 @@ sub run_mcl
 
 	print "\n=Stage: Run MCL=\n";
 
-	my $command = "$mcl_bin \"$mcl_input\" --abc -I $mcl_inflation -o \"$mcl_output\"";
+	my $param_keys = ["$mcl_input", '--abc', '-I', '-o'];
+	my $param_values = [undef, undef, $mcl_inflation, $mcl_output];
 
-	print "$command\n";
-	system("$command 1>$ortho_log 2>&1") == 0 or die "Could not execute $command. See $ortho_log\n";
+	$job_runner->submit_job($mcl_bin, $param_keys, $param_values, "$ortho_log.stdout", "$ortho_log.stderr");
 
 	print "\n";
 }
@@ -758,9 +745,6 @@ my $compliant;
 my $print_config;
 my $print_orthomcl_config;
 my $help;
-
-my $default_config_path = "$script_dir/../etc/automcl.conf";
-my $example_ortho_config = "$script_dir/../etc/orthomcl.config.example";
 
 if (!GetOptions(
 	'i|input-dir=s' => \$input_dir,

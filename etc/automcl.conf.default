@@ -19,3 +19,6 @@ blast:
 	v: 100000
 	b: 100000
 	e: 1e-5
+
+# can be either fork, or sge
+scheduler: fork

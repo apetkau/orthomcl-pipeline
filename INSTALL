@@ -1,0 +1,23 @@
+AutoMCL is used to automate running of OrthoMCL
+Dependencies:
+	OrthoMCL
+	Perl
+
+Perl Libraries to install:
+	BioPerl
+	DBD::mysql
+	DBI
+	Parallel::ForkManager
+	Schedule::DRMAAc
+	YAML::Tiny
+
+Libraries can all be installed using CPAN or CPANM with:
+	cpanm BioPerl DBD::mysql DBI Parallel::ForkManager YAML::Tiny
+
+	Schedule::DRMAAc needs to be installed manually.
+
+Need to modify parameters in etc/automcl.conf.default and rename to automcl.conf
+
+Need to modify nml_automcl.examlple in bin/ to setup environment variables, and rename to nml_automcl.
+
+Need to add bin/ to the PATH.

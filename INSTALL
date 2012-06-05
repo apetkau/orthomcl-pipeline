@@ -12,7 +12,7 @@ Perl Libraries to install:
 	YAML::Tiny
 
 Libraries can all be installed using CPAN or CPANM with:
-	cpanm BioPerl DBD::mysql DBI Parallel::ForkManager YAML::Tiny
+	cpanm -L cpanlib/ BioPerl DBD::mysql DBI Parallel::ForkManager YAML::Tiny
 
 	Schedule::DRMAAc needs to be installed manually.
 

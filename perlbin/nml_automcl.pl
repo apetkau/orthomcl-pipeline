@@ -451,7 +451,7 @@ sub format_database
 	my $param_keys = ['-i', '-p', '-l'];
 	my $param_values = [$database, 'T', $formatdb_log];
 
-	$job_runner->submit_job($formatdb, $param_keys, $param_values, "$log_dir/format-stdout.log", "$log_dir/format-stderr.log");
+	$job_runner->submit_job($formatdb, $param_keys, $param_values, "$log_dir/$stage_num.format-stdout.log", "$log_dir/$stage_num.format-stderr.log");
 
 	my $end_time = time;
 	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
@@ -495,7 +495,7 @@ sub perform_blast
 	}
 
 	# do jobs
-	$job_runner->submit_job_array(\@blast_commands,\@blast_params_array,"$blast_log_dir/stdout.blast","$blast_log_dir/stderr.blast",$num_tasks);
+	$job_runner->submit_job_array(\@blast_commands,\@blast_params_array,"$blast_log_dir/$stage_num.stdout.blast","$blast_log_dir/$stage_num.stderr.blast",$num_tasks);
 
 	my $end_time = time;
 	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
@@ -519,7 +519,7 @@ sub load_ortho_schema
 	my $param_keys = [$abs_ortho_config, $ortho_log];
 	my $param_values = [undef, undef];
 
-	$job_runner->submit_job($loadbin, $param_keys, $param_values, "$log_dir/loadschema.stdout.log", "$log_dir/loadschema.stderr.log");
+	$job_runner->submit_job($loadbin, $param_keys, $param_values, "$log_dir/$stage_num.loadschema.stdout.log", "$log_dir/$stage_num.loadschema.stderr.log");
 
 	my $end_time = time;
 	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
@@ -530,7 +530,7 @@ sub parseblast
 {
 	my ($stage_num, $blast_results_dir, $blast_load_dir, $ortho_config, $fasta_input, $log_dir) = @_;
 
-	my $parse_blast_log = "$log_dir/parseBlast.log";
+	my $parse_blast_log = "$log_dir/$stage_num.parseBlast.log";
 
 	print "\n=Stage $stage_num: Parse Blast Results=\n";
 	my $begin_time = time;
@@ -561,7 +561,7 @@ sub ortho_load
 {
 	my ($stage_num, $ortho_config, $blast_load_dir, $log_dir) = @_;
 
-	my $ortho_log = "$log_dir/orthomclLoadBlast.log";
+	my $ortho_log = "$log_dir/$stage_num.orthomclLoadBlast.out.log";
 	my $similar_seqs = "$blast_load_dir/similarSequences.txt";
 
         my $orthobin = $orthoParams->{'path'}->{'orthomcl'};
@@ -574,7 +574,7 @@ sub ortho_load
 
 	my $param_keys = ["$abs_ortho_config", "$similar_seqs"];
 	my $param_values = [undef, undef];
-	$job_runner->submit_job($loadbin, $param_keys, $param_values, $ortho_log, "$log_dir/orthomclLoadBlast.err.log");
+	$job_runner->submit_job($loadbin, $param_keys, $param_values, $ortho_log, "$log_dir/$stage_num.orthomclLoadBlast.err.log");
 
 	my $end_time = time;
 	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
@@ -585,7 +585,7 @@ sub ortho_pairs
 {
 	my ($stage_num, $ortho_config, $log_dir) = @_;
 
-	my $ortho_log = "$log_dir/orthomclPairs.log";
+	my $ortho_log = "$log_dir/$stage_num.orthomclPairs.log";
 
         my $orthobin = $orthoParams->{'path'}->{'orthomcl'};
 
@@ -638,7 +638,7 @@ sub run_mcl
 {
 	my ($stage_num, $pairs_dir, $log_dir) = @_;
 
-	my $ortho_log = "$log_dir/mcl.log";
+	my $ortho_log = "$log_dir/$stage_num.mcl.log";
 	my $mcl_input = "$pairs_dir/mclInput";
 	my $mcl_output = "$pairs_dir/mclOutput";
 

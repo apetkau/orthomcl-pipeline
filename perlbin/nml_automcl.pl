@@ -119,11 +119,12 @@ sub check_dependencies
 
 sub check_database
 {
-	my ($ortho_config, $log_dir) = @_;
+	my ($stage_num, $ortho_config, $log_dir) = @_;
 
 	my $check_database_log = "$log_dir/checkDatabase.log";
 
-	print "\n=Stage: Validate Database=\n";
+	print "\n=Stage $stage_num: Validate Database=\n";
+	my $begin_time = time;
 
 	die "Undefined orthmcl config file" if (not defined $ortho_config);
 
@@ -240,6 +241,8 @@ sub check_database
 		}
 	}
 
+	my $end_time = time;
+	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
 	print "\n";
 
 	$dbh->disconnect;
@@ -247,9 +250,10 @@ sub check_database
 
 sub validate_files
 {
-	my ($input_dir, $compliant, $log_dir) = @_;
+	my ($stage_num, $input_dir, $compliant, $log_dir) = @_;
 
-	print "\n=Stage: Validate Files =\n";
+	print "\n=Stage $stage_num: Validate Files =\n";
+	my $begin_time = time;
 
 	opendir(my $dh, $input_dir) or die "Could not open directory $input_dir: $!";
 	my $file = readdir($dh);
@@ -340,15 +344,18 @@ sub validate_files
 	closedir($dh);
 
 	print "Validated $file_count files\n";
+	my $end_time = time;
+	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
 }
 
 sub adjust_fasta
 {
-	my ($input_dir, $output, $log_dir) = @_;
+	my ($stage_num, $input_dir, $output, $log_dir) = @_;
 
 	my $log = "$log_dir/adjustFasta.log";
 
-	print "\n=Stage: Adjust Fasta=\n";
+	print "\n=Stage $stage_num: Adjust Fasta=\n";
+	my $begin_time = time;
 	my $ortho_adjust_fasta = $orthoParams->{'path'}->{'orthomcl'}.'/orthomclAdjustFasta';
 
 	opendir(my $dh, $input_dir) or die "Could not open directory $input_dir";
@@ -373,6 +380,8 @@ sub adjust_fasta
 	}
 	closedir($dh);
 
+	my $end_time = time;
+	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
 	print "\n";
 
 	chdir $cwd;
@@ -380,7 +389,7 @@ sub adjust_fasta
 
 sub filter_fasta
 {
-	my ($input_dir, $output_dir, $log_dir) = @_;
+	my ($stage_num, $input_dir, $output_dir, $log_dir) = @_;
 
 	my $log = "$log_dir/filterFasta.log";
 
@@ -388,7 +397,8 @@ sub filter_fasta
 	my $min_length = $orthoParams->{'filter'}->{'min_length'};
 	my $max_percent_stop = $orthoParams->{'filter'}->{'max_percent_stop'};
 
-	print "\n=Stage: Filter Fasta=\n";
+	print "\n=Stage $stage_num: Filter Fasta=\n";
+	my $begin_time = time;
 
 	my $cwd = getcwd;
 	chdir $output_dir or die "Could not change to directory $output_dir";
@@ -397,6 +407,8 @@ sub filter_fasta
 
 	system("$command 1> $log 2>&1") == 0 or die "Failed for command $command. Check log $log";
 
+	my $end_time = time;
+	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
 	print "\n";
  
 	chdir $cwd;
@@ -404,30 +416,35 @@ sub filter_fasta
 
 sub split_fasta
 {
-	my ($input_dir, $split_number, $log_dir) = @_;
+	my ($stage_num, $input_dir, $split_number, $log_dir) = @_;
 
 	my $log = "$log_dir/split.log";
 	my $input_file = "$input_dir/$all_fasta_name";
 
-	print "\n=Stage: Split Fasta=\n";
+	print "\n=Stage $stage_num: Split Fasta=\n";
+	my $begin_time = time;
 
 	require("$script_dir/../lib/split.pl");
 	print "splitting $input_file into $split_number pieces\n";
 	Split::run($input_file,$split_number,$input_dir,$log);
+
+	my $end_time = time;
+	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
 
 	print "\n";
 }
 
 sub format_database
 {
-	my ($input_dir, $log_dir) = @_;
+	my ($stage_num, $input_dir, $log_dir) = @_;
 
 	my $log = "$log_dir/formatDatabase.log";
 	my $formatdb_log = "$log_dir/formatdb.log";
 
 	my $formatdb = $orthoParams->{'path'}->{'formatdb'};
 
-	print "\n=Stage: Format Database=\n";
+	print "\n=Stage $stage_num: Format Database=\n";
+	my $begin_time = time;
 
 	my $database = "$input_dir/$all_fasta_name";
 
@@ -436,12 +453,14 @@ sub format_database
 
 	$job_runner->submit_job($formatdb, $param_keys, $param_values, "$log_dir/format-stdout.log", "$log_dir/format-stderr.log");
 
+	my $end_time = time;
+	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
 	print "\n";
 }
 
 sub perform_blast
 {
-	my ($blast_dir, $blast_results_dir, $num_tasks, $blast_log_dir) = @_;
+	my ($stage_num, $blast_dir, $blast_results_dir, $num_tasks, $blast_log_dir) = @_;
 
 	my $blastbin = $orthoParams->{'path'}->{'blastall'};
 
@@ -449,7 +468,8 @@ sub perform_blast
 	my @blast_commands;
 	my @blast_params_array;
 
-	print "\n=Stage: Perform Blast=\n";
+	print "\n=Stage $stage_num: Perform Blast=\n";
+	my $begin_time = time;
 
 	# set autoflush
 	print "performing blasts";
@@ -477,14 +497,17 @@ sub perform_blast
 	# do jobs
 	$job_runner->submit_job_array(\@blast_commands,\@blast_params_array,"$blast_log_dir/stdout.blast","$blast_log_dir/stderr.blast",$num_tasks);
 
+	my $end_time = time;
+	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
 	print "done\n\n";
 }
 
 sub load_ortho_schema
 {
-	my ($ortho_config, $log_dir) = @_;
+	my ($stage_num, $ortho_config, $log_dir) = @_;
 
-	print "\n=Stage: Load OrthoMCL Database Schema=\n";
+	print "\n=Stage $stage_num: Load OrthoMCL Database Schema=\n";
+	my $begin_time = time;
 
 	my $ortho_log = "$log_dir/orthomclSchema.log";
 	
@@ -498,16 +521,19 @@ sub load_ortho_schema
 
 	$job_runner->submit_job($loadbin, $param_keys, $param_values, "$log_dir/loadschema.stdout.log", "$log_dir/loadschema.stderr.log");
 
+	my $end_time = time;
+	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
 	print "\n";
 }
 
 sub parseblast
 {
-	my ($blast_results_dir, $blast_load_dir, $ortho_config, $fasta_input, $log_dir) = @_;
+	my ($stage_num, $blast_results_dir, $blast_load_dir, $ortho_config, $fasta_input, $log_dir) = @_;
 
 	my $parse_blast_log = "$log_dir/parseBlast.log";
 
-	print "\n=Stage: Parse Blast Results=\n";
+	print "\n=Stage $stage_num: Parse Blast Results=\n";
+	my $begin_time = time;
 
 	my $command = "cat $blast_results_dir/$blast_result_name.* > $blast_load_dir/$blast_all_results";
 
@@ -525,12 +551,15 @@ sub parseblast
 	my $param_keys = ["$blast_load_dir/$blast_all_results", "$fasta_input"];
 	my $param_values = [undef, undef];
 	$job_runner->submit_job($ortho_parser, $param_keys, $param_values, "$blast_load_dir/similarSequences.txt", $parse_blast_log);
+
+	my $end_time = time;
+	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
 	print "\n";
 }
 
 sub ortho_load
 {
-	my ($ortho_config, $blast_load_dir, $log_dir) = @_;
+	my ($stage_num, $ortho_config, $blast_load_dir, $log_dir) = @_;
 
 	my $ortho_log = "$log_dir/orthomclLoadBlast.log";
 	my $similar_seqs = "$blast_load_dir/similarSequences.txt";
@@ -538,7 +567,8 @@ sub ortho_load
         my $orthobin = $orthoParams->{'path'}->{'orthomcl'};
         my $loadbin = "$orthobin/orthomclLoadBlast";
 
-	print "\n=Stage: Load Blast Results=\n";
+	print "\n=Stage $stage_num: Load Blast Results=\n";
+	my $begin_time = time;
 
 	my $abs_ortho_config = File::Spec->rel2abs($ortho_config);
 
@@ -546,12 +576,14 @@ sub ortho_load
 	my $param_values = [undef, undef];
 	$job_runner->submit_job($loadbin, $param_keys, $param_values, $ortho_log, "$log_dir/orthomclLoadBlast.err.log");
 
+	my $end_time = time;
+	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
 	print "\n";
 }
 
 sub ortho_pairs
 {
-	my ($ortho_config, $log_dir) = @_;
+	my ($stage_num, $ortho_config, $log_dir) = @_;
 
 	my $ortho_log = "$log_dir/orthomclPairs.log";
 
@@ -559,7 +591,8 @@ sub ortho_pairs
 
 	my $pairsbin = "$orthobin/orthomclPairs";
 
-	print "\n=Stage: OrthoMCL Pairs=\n";
+	print "\n=Stage $stage_num: OrthoMCL Pairs=\n";
+	my $begin_time = time;
 
 	my $abs_ortho_config = File::Spec->rel2abs($ortho_config);
 
@@ -568,12 +601,14 @@ sub ortho_pairs
 
 	$job_runner->submit_job($pairsbin, $param_keys, $param_values, "$ortho_log.stdout", "$ortho_log.stderr");
 
+	my $end_time = time;
+	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
 	print "\n";
 }
 
 sub ortho_dump_pairs
 {
-	my ($ortho_config, $pairs_dir, $log_dir) = @_;
+	my ($stage_num, $ortho_config, $pairs_dir, $log_dir) = @_;
 
 	my $ortho_log = "$log_dir/orthomclDumpPairs.log";
 
@@ -581,7 +616,8 @@ sub ortho_dump_pairs
 
 	my $pairsbin = "$orthobin/orthomclDumpPairsFiles";
 
-	print "\n=Stage: OrthoMCL Dump Pairs=\n";
+	print "\n=Stage $stage_num: OrthoMCL Dump Pairs=\n";
+	my $begin_time = time;
 
 	my $cwd = getcwd;
 	chdir $pairs_dir or die "Could not change to directory $pairs_dir";
@@ -593,12 +629,14 @@ sub ortho_dump_pairs
 
 	chdir $cwd;
 
+	my $end_time = time;
+	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
 	print "\n";
 }
 
 sub run_mcl
 {
-	my ($pairs_dir, $log_dir) = @_;
+	my ($stage_num, $pairs_dir, $log_dir) = @_;
 
 	my $ortho_log = "$log_dir/mcl.log";
 	my $mcl_input = "$pairs_dir/mclInput";
@@ -617,19 +655,22 @@ sub run_mcl
 		$mcl_inflation = 1.5;
 	}
 
-	print "\n=Stage: Run MCL=\n";
+	print "\n=Stage $stage_num: Run MCL=\n";
+	my $begin_time = time;
 
 	my $param_keys = ["$mcl_input", '--abc', '-I', '-o'];
 	my $param_values = [undef, undef, $mcl_inflation, $mcl_output];
 
 	$job_runner->submit_job($mcl_bin, $param_keys, $param_values, "$ortho_log.stdout", "$ortho_log.stderr");
 
+	my $end_time = time;
+	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
 	print "\n";
 }
 
 sub mcl_to_groups
 {
-	my ($pairs_dir, $groups_dir, $log_dir) = @_;
+	my ($stage_num, $pairs_dir, $groups_dir, $log_dir) = @_;
 
 	my $ortho_log = "$log_dir/mclGroups.log";
 	my $mcl_output = "$pairs_dir/mclOutput";
@@ -639,7 +680,8 @@ sub mcl_to_groups
 
 	my $groupsbin = "$orthobin/orthomclMclToGroups";
 
-	print "\n=Stage: MCL to Groups=\n";
+	print "\n=Stage $stage_num: MCL to Groups=\n";
+	my $begin_time = time;
 
 	my $command = "$groupsbin group_ 1 < \"$mcl_output\" > \"$groups_file\"";
 
@@ -647,6 +689,8 @@ sub mcl_to_groups
 	system("$command 2>$ortho_log") == 0 or die "Could not execute $command. See $ortho_log\n";
 	print "Groups File:  $groups_file\n";
 
+	my $end_time = time;
+	printf "Stage $stage_num took %0.2f minutes \n",($end_time-$begin_time)/60;
 	print "\n";
 }
 
@@ -875,9 +919,9 @@ $config_out = undef;
 print "Starting OrthoMCL pipeline on: ".(localtime)."\n";
 my $begin_time = time;
 
-validate_files($input_dir, $compliant, $log_dir);
-check_database($orthomcl_config, $log_dir);
-load_ortho_schema($orthomcl_config, $log_dir);
+validate_files(1, $input_dir, $compliant, $log_dir);
+check_database(2, $orthomcl_config, $log_dir);
+load_ortho_schema(3, $orthomcl_config, $log_dir);
 if (defined $compliant && $compliant)
 {
 	rmtree($compliant_dir) or die "Could not delete $compliant_dir: $!";
@@ -885,18 +929,18 @@ if (defined $compliant && $compliant)
 }
 else
 {
-	adjust_fasta($input_dir,$compliant_dir, $log_dir);
+	adjust_fasta(4, $input_dir,$compliant_dir, $log_dir);
 }
-filter_fasta($compliant_dir,$blast_dir, $log_dir);
-split_fasta($blast_dir, $split_number, $log_dir);
-format_database($blast_dir, $log_dir);
-perform_blast($blast_dir, $blast_results_dir, $split_number, $blast_log_dir);
-parseblast($blast_results_dir, $blast_load_dir, $orthomcl_config, $compliant_dir, $log_dir);
-ortho_load($orthomcl_config, $blast_load_dir, $log_dir);
-ortho_pairs($orthomcl_config, $log_dir);
-ortho_dump_pairs($orthomcl_config, $pairs_dir, $log_dir);
-run_mcl($pairs_dir, $log_dir);
-mcl_to_groups($pairs_dir, $groups_dir, $log_dir);
+filter_fasta(5, $compliant_dir,$blast_dir, $log_dir);
+split_fasta(6, $blast_dir, $split_number, $log_dir);
+format_database(7, $blast_dir, $log_dir);
+perform_blast(8, $blast_dir, $blast_results_dir, $split_number, $blast_log_dir);
+parseblast(9, $blast_results_dir, $blast_load_dir, $orthomcl_config, $compliant_dir, $log_dir);
+ortho_load(10, $orthomcl_config, $blast_load_dir, $log_dir);
+ortho_pairs(11, $orthomcl_config, $log_dir);
+ortho_dump_pairs(12, $orthomcl_config, $pairs_dir, $log_dir);
+run_mcl(13, $pairs_dir, $log_dir);
+mcl_to_groups(14, $pairs_dir, $groups_dir, $log_dir);
 
 print "Orthomcl Pipeline ended on ".(localtime)."\n";
 my $end_time = time;

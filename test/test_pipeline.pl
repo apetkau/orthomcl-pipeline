@@ -47,6 +47,28 @@ sub compare_groups
 	return $matched;
 }
 
+sub setup_parameters
+{
+	my ($test_dir, $tempdir, $ortho_param) = @_;
+
+	print "README:\n";
+	open(my $th, "$test_dir/README");
+	while(<$th>){print $_;}
+	close($th);
+	
+	# write out orthomcl config file used for test (including database login info)
+	my $test_ortho_config = "$tempdir/orthomcl.config";
+	copy("$test_dir/etc/orthomcl.config", $test_ortho_config) or die "Could not copy $test_dir/etc/orthomcl.config: $!";
+	open (my $test_ortho_config_h, ">>$test_ortho_config");
+	print $test_ortho_config_h 'dbVendor='.$ortho_param->{'dbVendor'};
+	print $test_ortho_config_h 'dbConnectString='.$ortho_param->{'dbConnectString'};
+	print $test_ortho_config_h 'dbLogin='.$ortho_param->{'dbLogin'};
+	print $test_ortho_config_h 'dbPassword='.$ortho_param->{'dbPassword'};
+	close($test_ortho_config_h);
+
+	return $test_ortho_config;
+}
+
 my $ortho_conf;
 my $scheduler;
 my %ortho_param;
@@ -98,13 +120,18 @@ elsif ($scheduler ne 'fork' and $scheduler ne 'sge')
 	die "Error: invalid scheduler=$scheduler\n".usage;
 }
 
-my $data_dir = "$script_dir/data";
+print "Test using scheduler $scheduler\n\n";
 
+my $data_dir;
+
+# CASE
+$data_dir = "$script_dir/data/basic";
+
+print "TESTING NON-COMPLIANT INPUT\n";
 opendir(my $data_dirh, $data_dir) or die "Could not open $data_dir";
 my @dirs = grep {/^[^\.]/} readdir($data_dirh);
 closedir($data_dirh);
 
-print "Test using scheduler $scheduler\n\n";
 for my $test_num (@dirs)
 {
 	print "TESTING FULL PIPELINE RUN $test_num\n";
@@ -113,28 +140,50 @@ for my $test_num (@dirs)
 	my $out_dir = "$tempdir/output";
 	my $test_dir = "$data_dir/$test_num";
 
-	print "Test using parameters:\n";
-	open(my $th, "$test_dir/etc/automcl.conf");
-	while(<$th>){print $_;}
-	close($th);
+	my ($test_ortho_config) = setup_parameters($test_dir, $tempdir, \%ortho_param);
 	
-	# write out orthomcl config file used for test (including database login info)
-	my $test_ortho_config = "$tempdir/orthomcl.config";
-	copy("$test_dir/etc/orthomcl.config", $test_ortho_config) or die "Could not copy $test_dir/etc/orthomcl.config: $!";
-	open (my $test_ortho_config_h, ">>$test_ortho_config");
-	print $test_ortho_config_h 'dbVendor='.$ortho_param{'dbVendor'};
-	print $test_ortho_config_h 'dbConnectString='.$ortho_param{'dbConnectString'};
-	print $test_ortho_config_h 'dbLogin='.$ortho_param{'dbLogin'};
-	print $test_ortho_config_h 'dbPassword='.$ortho_param{'dbPassword'};
-	close($test_ortho_config_h);
-	
-	my $test_command1 = "$script_dir/../bin/nml_automcl --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>&1 1>$tempdir/nml_automcl.log";
+	my $test_command1 = "$script_dir/../bin/nml_automcl --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/nml_automcl.err.log 1>$tempdir/nml_automcl.out.log";
 	
 	#print $test_command1,"\n";
 	system($test_command1) == 0 or die "Could not execute command $test_command1\n";
 	
 	my $matched = compare_groups("$test_dir/groups/groups.txt", "$out_dir/groups/groups.txt");
 	ok ($matched, "Expected matched returned groups file");
+
+	print "\n";
+	
+	rmtree($tempdir);
+}
+
+# CASE
+$data_dir = "$script_dir/data/compliant";
+
+print "TESTING COMPLIANT INPUT\n";
+opendir($data_dirh, $data_dir) or die "Could not open $data_dir";
+@dirs = grep {/^[^\.]/} readdir($data_dirh);
+closedir($data_dirh);
+
+for my $test_num (@dirs)
+{
+	print "TESTING FULL PIPELINE RUN $test_num\n";
+
+	my $tempdir = tempdir('automcl.XXXXXX', DIR=> "$script_dir/tmp");
+	my $out_dir = "$tempdir/output";
+	my $test_dir = "$data_dir/$test_num";
+
+	my ($test_ortho_config) = setup_parameters($test_dir, $tempdir, \%ortho_param);
+	
+	my $test_command1_non_comp = "$script_dir/../bin/nml_automcl --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/nml_automcl_noncompliant.err.log 1>$tempdir/nml_automcl_noncompliant.out.log";
+	my $ret_value = system($test_command1_non_comp);
+	ok($ret_value ne 0, "Pipeline failed with no compliant parameter");
+
+	my $test_command1 = "$script_dir/../bin/nml_automcl --compliant --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/nml_automcl_compliant.err.log 1>$tempdir/nml_automcl_compliant.out.log";
+	
+	#print $test_command1,"\n";
+	system($test_command1) == 0 or die "Could not execute command $test_command1\n";
+	
+	my $matched = compare_groups("$test_dir/groups/groups.txt", "$out_dir/groups/groups.txt");
+	ok ($matched, "Pipeline succeeded with compliant parameter. Expected matched returned groups file");
 
 	print "\n";
 	

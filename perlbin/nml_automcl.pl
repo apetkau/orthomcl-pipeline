@@ -39,6 +39,8 @@ my $blast_all_results = "all.fasta";
 
 my $orthoParams; # stores main parameters
 
+my $yes = undef;
+
 sub usage
 {
 "Usage: nml_automcl -i [input dir] -o [output dir] -m [orthmcl config] [Options]
@@ -51,6 +53,7 @@ sub usage
 	--compliant:  If fasta data is already compliant (headers match, etc).
 	--print-config: Prints default config file being used.
 	--print-orthomcl-config:  Prints example orthomcl config file.
+	--yes: Automatically answers yes to every question (could overwrite/delete old data).
 	-h|--help:  Show help.
 
 	Examples:
@@ -199,7 +202,7 @@ sub check_database
 	if ($rv > 0)
 	{
 		print "Warning: some tables exist already in database $dbConnect, user=$dbLogin, database_name=$database_name. Do you want to remove (y/n)? ";
-		my $response = <>;
+		my $response = $yes || <>;
 		chomp $response;
 		if (not ($response eq 'y' or $response eq 'Y' or ($response =~ /^yes$/i)))
 		{
@@ -619,10 +622,11 @@ sub ortho_dump_pairs
 	print "\n=Stage $stage_num: OrthoMCL Dump Pairs=\n";
 	my $begin_time = time;
 
+	my $abs_ortho_config = File::Spec->rel2abs($ortho_config);
 	my $cwd = getcwd;
 	chdir $pairs_dir or die "Could not change to directory $pairs_dir";
 
-	my $command = "$pairsbin \"$cwd/$ortho_config\"";
+	my $command = "$pairsbin \"$abs_ortho_config\"";
 
 	print "$command\n";
 	system("$command 1>$ortho_log 2>&1") == 0 or die "Could not execute $command. See $ortho_log\n";
@@ -789,6 +793,7 @@ my $compliant;
 my $print_config;
 my $print_orthomcl_config;
 my $help;
+my $yes_opt;
 
 if (!GetOptions(
 	'i|input-dir=s' => \$input_dir,
@@ -796,6 +801,7 @@ if (!GetOptions(
 	'c|config=s' => \$main_config,
 	'o|output-dir=s' => \$output_dir,
 	's|split=i' => \$split_number,
+	'yes' => \$yes_opt,
 	'compliant' => \$compliant,
 	'print-config' => \$print_config,
 	'print-orthomcl-config' => \$print_orthomcl_config,
@@ -808,6 +814,11 @@ if (defined $help and $help)
 {
 	print usage;
 	exit 0;
+}
+
+if (defined $yes_opt and $yes_opt)
+{
+	$yes = 'y';
 }
 
 if (defined $print_config and $print_config)
@@ -871,7 +882,7 @@ if (defined $main_config and not (-e $main_config))
 if (-e $output_dir)
 {
     print "Warning: directory \"$output_dir\" already exists, are you sure you want to store data here [Y]? ";
-    my $response = <>;
+    my $response = $yes || <>;
     chomp $response;
     if (not ($response eq 'y' or $response eq 'Y'))
     {

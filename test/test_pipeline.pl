@@ -15,8 +15,9 @@ my $script_dir = $FindBin::Bin;
 
 sub usage
 {
-	return "Usage: $0 -m [orthomcl.config]\n".
-	       "orthomcl.config:  A orthomcl config file containing the database login info for testing\n";
+	return "Usage: $0 -m [orthomcl.config] -s [scheduler]\n".
+	       "orthomcl.config:  A orthomcl config file containing the database login info for testing\n".
+	       "scheduler:  The scheduler to use, one of 'fork' or 'sge' (default fork)\n";
 }
 
 sub compare_groups
@@ -32,6 +33,7 @@ sub compare_groups
 		my $line2 = readline $file2h;
 		if ($line1 ne $line2)
 		{
+			print "line1: \"$line1\" not match line2 \"$line2\"";
 			$matched=0;
 			close($file1h);
 			close($file2h);
@@ -46,9 +48,11 @@ sub compare_groups
 }
 
 my $ortho_conf;
+my $scheduler;
 my %ortho_param;
 if (!GetOptions(
-	'm|orthomcl-config=s' => \$ortho_conf
+	'm|orthomcl-config=s' => \$ortho_conf,
+	'scheduler=s' => \$scheduler
 	))
 {
 	die "$!\n".usage;
@@ -85,17 +89,34 @@ else
 	die "Error: no dbPassword defined" if (not defined $ortho_param{'dbPassword'});
 }
 
+if (not defined $scheduler)
+{
+    $scheduler = 'fork';
+}
+elsif ($scheduler ne 'fork' and $scheduler ne 'sge')
+{
+	die "Error: invalid scheduler=$scheduler\n".usage;
+}
+
 my $data_dir = "$script_dir/data";
 
 opendir(my $data_dirh, $data_dir) or die "Could not open $data_dir";
 my @dirs = grep {/^[^\.]/} readdir($data_dirh);
 closedir($data_dirh);
 
+print "Test using scheduler $scheduler\n\n";
 for my $test_num (@dirs)
 {
+	print "TESTING FULL PIPELINE RUN $test_num\n";
+
 	my $tempdir = tempdir('automcl.XXXXXX', DIR=> "$script_dir/tmp");
 	my $out_dir = "$tempdir/output";
 	my $test_dir = "$data_dir/$test_num";
+
+	print "Test using parameters:\n";
+	open(my $th, "$test_dir/etc/automcl.conf");
+	while(<$th>){print $_;}
+	close($th);
 	
 	# write out orthomcl config file used for test (including database login info)
 	my $test_ortho_config = "$tempdir/orthomcl.config";
@@ -107,9 +128,8 @@ for my $test_num (@dirs)
 	print $test_ortho_config_h 'dbPassword='.$ortho_param{'dbPassword'};
 	close($test_ortho_config_h);
 	
-	my $test_command1 = "$script_dir/../bin/nml_automcl --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>&1 1>$tempdir/nml_automcl.log";
+	my $test_command1 = "$script_dir/../bin/nml_automcl --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>&1 1>$tempdir/nml_automcl.log";
 	
-	print "TESTING FULL PIPELINE RUN $test_num\n";
 	#print $test_command1,"\n";
 	system($test_command1) == 0 or die "Could not execute command $test_command1\n";
 	

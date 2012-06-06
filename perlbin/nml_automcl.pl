@@ -54,6 +54,7 @@ sub usage
 	--print-config: Prints default config file being used.
 	--print-orthomcl-config:  Prints example orthomcl config file.
 	--yes: Automatically answers yes to every question (could overwrite/delete old data).
+	--scheduler: Defined scheduler (sge or fork).
 	-h|--help:  Show help.
 
 	Examples:
@@ -74,6 +75,32 @@ sub usage
 	nml_automcl -i input/ -o output/ -m orthomcl.confg --compliant
 		Runs orthmcl with the given input/output/config files.
 		Skips the orthomclAdjustFasta stage on input files.\n";
+}
+
+sub set_scheduler
+{
+	my ($scheduler) = @_;
+
+	if (not defined $scheduler)
+	{
+		warn "scheduler not set. defaulting to using 'fork'";
+		require("$script_dir/../lib/AutoMCL/JobManager/Fork.pm");
+		$job_runner = new AutoMCL::JobManager::Fork;
+	}
+	elsif ($scheduler eq 'sge')
+	{
+ 		require("$script_dir/../lib/AutoMCL/JobManager/SGE.pm");
+		$job_runner = new AutoMCL::JobManager::SGE;
+	}
+	elsif ($scheduler eq 'fork')
+	{
+		require("$script_dir/../lib/AutoMCL/JobManager/Fork.pm");
+		$job_runner = new AutoMCL::JobManager::Fork;
+	}
+	else
+	{
+		die "Error: scheduler set to invalid parameter \"$scheduler\". Must be either 'sge' or 'fork'.  Check file $default_config_path or the passed config file.";
+	}
 }
 
 sub check_dependencies
@@ -98,26 +125,7 @@ sub check_dependencies
 	die "Error: mcl location not defined" if (not defined $mclbin);
 	die "Error: mcl=\"$mclbin\" does not exist" if (not -e $mclbin);
 
-	if (not defined $scheduler)
-	{
-		warn "scheduler not set. defaulting to using 'fork'";
-		require("$script_dir/../lib/AutoMCL/JobManager/Fork.pm");
-		$job_runner = new AutoMCL::JobManager::Fork;
-	}
-	elsif ($scheduler eq 'sge')
-	{
- 		require("$script_dir/../lib/AutoMCL/JobManager/SGE.pm");
-		$job_runner = new AutoMCL::JobManager::SGE;
-	}
-	elsif ($scheduler eq 'fork')
-	{
-		require("$script_dir/../lib/AutoMCL/JobManager/Fork.pm");
-		$job_runner = new AutoMCL::JobManager::Fork;
-	}
-	else
-	{
-		die "Error: scheduler set to invalid parameter \"$scheduler\". Must be either 'sge' or 'fork'.  Check file $default_config_path or the passed config file.";
-	}
+	set_scheduler($scheduler);
 }
 
 sub check_database
@@ -794,6 +802,7 @@ my $print_config;
 my $print_orthomcl_config;
 my $help;
 my $yes_opt;
+my $scheduler;
 
 if (!GetOptions(
 	'i|input-dir=s' => \$input_dir,
@@ -802,6 +811,7 @@ if (!GetOptions(
 	'o|output-dir=s' => \$output_dir,
 	's|split=i' => \$split_number,
 	'yes' => \$yes_opt,
+	'scheduler=s' => \$scheduler,
 	'compliant' => \$compliant,
 	'print-config' => \$print_config,
 	'print-orthomcl-config' => \$print_orthomcl_config,
@@ -897,6 +907,12 @@ if (-e $output_dir)
 else
 {
 	mkdir $output_dir;
+}
+
+#override scheduler if possible
+if (defined $scheduler)
+{
+	set_scheduler($scheduler);
 }
 
 $input_dir = abs_path($input_dir);

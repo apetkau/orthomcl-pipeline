@@ -16,8 +16,10 @@ my $script_dir = $FindBin::Bin;
 sub usage
 {
 	return "Usage: $0 -m [orthomcl.config] -s [scheduler]\n".
-	       "orthomcl.config:  A orthomcl config file containing the database login info for testing\n".
-	       "scheduler:  The scheduler to use, one of 'fork' or 'sge' (default fork)\n";
+	       "Options:\n".
+	       "\t-m [orthomcl.config]:  A orthomcl config file containing the database login info for testing\n".
+	       "\t-s [scheduler]:  The scheduler to use, one of 'fork' or 'sge' (default fork)\n".
+	       "\t-t [temp_dir]:  The temporary directory to use, must be accessible by all nodes for sge mode\n";
 }
 
 sub compare_groups
@@ -81,10 +83,12 @@ sub setup_parameters
 
 my $ortho_conf;
 my $scheduler;
+my $temp_root;
 my %ortho_param;
 if (!GetOptions(
 	'm|orthomcl-config=s' => \$ortho_conf,
-	'scheduler=s' => \$scheduler
+	's|scheduler=s' => \$scheduler,
+	't|temp=s' => \$temp_root
 	))
 {
 	die "$!\n".usage;
@@ -130,6 +134,27 @@ elsif ($scheduler ne 'fork' and $scheduler ne 'sge')
 	die "Error: invalid scheduler=$scheduler\n".usage;
 }
 
+if (not defined $temp_root)
+{
+	if (defined $ENV{'HOME'})
+	{
+		$temp_root = $ENV{'HOME'};
+	}
+	else
+	{
+		$temp_root = "/tmp";
+	}
+}
+elsif (not -d $temp_root)
+{
+	die "Error: temp=$temp_root not a directory";
+}
+
+if (not -w $temp_root)
+{
+	die "Error: temp=$temp_root is not writeable by current user";
+}
+
 print "Test using scheduler $scheduler\n\n";
 
 my $data_dir;
@@ -146,7 +171,7 @@ for my $test_num (@dirs)
 {
 	print "TESTING FULL PIPELINE RUN $test_num\n";
 
-	my $tempdir = tempdir('automcl.XXXXXX', DIR=> "$script_dir/tmp");
+	my $tempdir = tempdir('automcl.XXXXXX', DIR=> $temp_root);
 	my $out_dir = "$tempdir/output";
 	my $test_dir = "$data_dir/$test_num";
 
@@ -177,7 +202,7 @@ for my $test_num (@dirs)
 {
 	print "TESTING FULL PIPELINE RUN $test_num\n";
 
-	my $tempdir = tempdir('automcl.XXXXXX', DIR=> "$script_dir/tmp");
+	my $tempdir = tempdir('automcl.XXXXXX', DIR=> "$temp_root");
 	my $out_dir = "$tempdir/output";
 	my $test_dir = "$data_dir/$test_num";
 

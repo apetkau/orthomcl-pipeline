@@ -31,7 +31,17 @@ sub compare_groups
 	while(my $line1 = readline $file1h)
 	{
 		my $line2 = readline $file2h;
-		if ($line1 ne $line2)
+		chomp ($line1,$line2);
+
+		my @tokens1 = split(/\s+/,$line1);
+		my @tokens2 = split(/\s+/,$line2);
+
+		my $group_token1 = shift(@tokens1);
+		my $group_token2 = shift(@tokens2);
+
+		my $sorted_line1 = $group_token1.' '.join(' ', sort {$a cmp $b} @tokens1);
+		my $sorted_line2 = $group_token2.' '.join(' ', sort {$a cmp $b} @tokens2);
+		if ($sorted_line1 ne $sorted_line2)
 		{
 			print "line1: \"$line1\" not match line2 \"$line2\"";
 			$matched=0;
@@ -175,7 +185,7 @@ for my $test_num (@dirs)
 	
 	my $test_command1_non_comp = "$script_dir/../bin/nml_automcl --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/nml_automcl_noncompliant.err.log 1>$tempdir/nml_automcl_noncompliant.out.log";
 	my $ret_value = system($test_command1_non_comp);
-	ok($ret_value ne 0, "Pipeline failed with no compliant parameter");
+	ok($ret_value ne 0, "No compliant parameter successfully caught");
 
 	my $test_command1 = "$script_dir/../bin/nml_automcl --compliant --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/nml_automcl_compliant.err.log 1>$tempdir/nml_automcl_compliant.out.log";
 	

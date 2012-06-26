@@ -8,4 +8,4 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 #export PERL5LIB=$SCRIPT_DIR/../cpanlib/lib/perl5:$PERL5LIB
 
-$SCRIPT_DIR/../bin/nml_automcl.pl $@
+$SCRIPT_DIR/../perlbin/nml_automcl.pl $@

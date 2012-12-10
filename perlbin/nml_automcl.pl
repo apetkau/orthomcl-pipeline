@@ -50,7 +50,8 @@ sub usage
 	-s|--split:  The number of times to split the fasta files for blasting
 	-c|--config:  The main config file (optional, overrides default config).
 	-m|--orthomcl-config:  The orthomcl config file
-	--compliant:  If fasta data is already compliant (headers match, etc).
+	--compliant:  If fasta data is already compliant (headers match, etc) (default).
+	--nocompliant:  If fasta data is not already compliant (headers match, etc).
 	--print-config: Prints default config file being used.
 	--print-orthomcl-config:  Prints example orthomcl config file.
 	--yes: Automatically answers yes to every question (could overwrite/delete old data).
@@ -300,7 +301,7 @@ sub validate_files
 				if ($compliant)
 				{
 					my ($name, $gene) = ($seq_id =~ /^([^\|]+)\|(\S+)/);
-					my $remove_message = "Perhaps try removing --compliant to format files.";
+					my $remove_message = "Perhaps try using --nocompliant to format files.";
 
 					die $error_message.": missing sequence name.\n$remove_message" if (not defined $name);
 					die $error_message.": sequence name not equal to $current_seq_name.\n$remove_message" if ($name ne $current_seq_name);
@@ -318,7 +319,7 @@ sub validate_files
 				else
 				{
 					die $error_message.": files not marked as compliant but found compliant header.\n"
-							  ."Perhaps try adding --compliant, or checking files." if ($seq_id =~ /^[^\|]+\|\S+/);
+							  ."Perhaps try removing --nocompliant, or checking files." if ($seq_id =~ /^[^\|]+\|\S+/);
 					my ($gene) = ($seq_id =~ /^(\S+)/);
 
 					if ((not defined $gene) or $gene eq '')
@@ -797,7 +798,7 @@ my ($input_dir, $output_dir);
 my $split_number;
 my $orthomcl_config;
 my $main_config;
-my $compliant;
+my $compliant = 1;
 my $print_config;
 my $print_orthomcl_config;
 my $help;
@@ -812,7 +813,7 @@ if (!GetOptions(
 	's|split=i' => \$split_number,
 	'yes' => \$yes_opt,
 	'scheduler=s' => \$scheduler,
-	'compliant' => \$compliant,
+	'compliant!' => \$compliant,
 	'print-config' => \$print_config,
 	'print-orthomcl-config' => \$print_orthomcl_config,
 	'h|help' => \$help))

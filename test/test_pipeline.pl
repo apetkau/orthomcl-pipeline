@@ -72,10 +72,10 @@ sub setup_parameters
 	my $test_ortho_config = "$tempdir/orthomcl.config";
 	copy("$test_dir/etc/orthomcl.config", $test_ortho_config) or die "Could not copy $test_dir/etc/orthomcl.config: $!";
 	open (my $test_ortho_config_h, ">>$test_ortho_config");
-	print $test_ortho_config_h 'dbVendor='.$ortho_param->{'dbVendor'};
-	print $test_ortho_config_h 'dbConnectString='.$ortho_param->{'dbConnectString'};
-	print $test_ortho_config_h 'dbLogin='.$ortho_param->{'dbLogin'};
-	print $test_ortho_config_h 'dbPassword='.$ortho_param->{'dbPassword'};
+	print $test_ortho_config_h 'dbVendor='.$ortho_param->{'dbVendor'}."\n";
+	print $test_ortho_config_h 'dbConnectString='.$ortho_param->{'dbConnectString'}."\n";
+	print $test_ortho_config_h 'dbLogin='.$ortho_param->{'dbLogin'}."\n";
+	print $test_ortho_config_h 'dbPassword='.$ortho_param->{'dbPassword'}."\n";
 	close($test_ortho_config_h);
 
 	return $test_ortho_config;
@@ -108,11 +108,12 @@ else
 	
 	while(<$f>)
 	{
+		chomp;
 		my ($valid_line) = ($_ =~ /^([^#]+)/);
 
 		if (defined $valid_line and $valid_line ne '')
 		{
-			my @tokens = split(/=/,$valid_line);
+			my @tokens = ($valid_line =~ /^([^=]+)=(.*)/);
 
 			$ortho_param{$tokens[0]} = $tokens[1];
 		}
@@ -177,7 +178,7 @@ for my $test_num (@dirs)
 
 	my ($test_ortho_config) = setup_parameters($test_dir, $tempdir, \%ortho_param);
 	
-	my $test_command1 = "$script_dir/../bin/nml_automcl --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/nml_automcl.err.log 1>$tempdir/nml_automcl.out.log";
+	my $test_command1 = "$script_dir/../bin/nml_automcl --nocompliant --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/nml_automcl.err.log 1>$tempdir/nml_automcl.out.log";
 	
 	#print $test_command1,"\n";
 	system($test_command1) == 0 or die "Could not execute command $test_command1\n";
@@ -208,7 +209,7 @@ for my $test_num (@dirs)
 
 	my ($test_ortho_config) = setup_parameters($test_dir, $tempdir, \%ortho_param);
 	
-	my $test_command1_non_comp = "$script_dir/../bin/nml_automcl --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/nml_automcl_noncompliant.err.log 1>$tempdir/nml_automcl_noncompliant.out.log";
+	my $test_command1_non_comp = "$script_dir/../bin/nml_automcl --nocompliant --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/nml_automcl_noncompliant.err.log 1>$tempdir/nml_automcl_noncompliant.out.log";
 	my $ret_value = system($test_command1_non_comp);
 	ok($ret_value ne 0, "No compliant parameter successfully caught");
 
@@ -219,6 +220,15 @@ for my $test_num (@dirs)
 	
 	my $matched = compare_groups("$test_dir/groups/groups.txt", "$out_dir/groups/groups.txt");
 	ok ($matched, "Pipeline succeeded with compliant parameter. Expected matched returned groups file");
+
+	# test compliant (default)
+	$test_command1 = "$script_dir/../bin/nml_automcl --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/nml_automcl_compliant.err.log 1>$tempdir/nml_automcl_compliant.out.log";
+	
+	#print $test_command1,"\n";
+	system($test_command1) == 0 or die "Could not execute command $test_command1\n";
+	
+	$matched = compare_groups("$test_dir/groups/groups.txt", "$out_dir/groups/groups.txt");
+	ok ($matched, "Pipeline succeeded with (default) compliant parameter. Expected matched returned groups file");
 
 	print "\n";
 	

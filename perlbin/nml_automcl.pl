@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Purpose:  Automates running of the orthomcl pipeline.  See http://www.orthomcl.org/cgi-bin/OrthoMclWeb.cgi
 # Input: A directory of input fasta files for orthomcl as well as a number of config files.

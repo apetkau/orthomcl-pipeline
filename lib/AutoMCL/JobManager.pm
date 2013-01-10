@@ -1,5 +1,3 @@
-#!/usr/bin/perl
-
 package AutoMCL::JobManager;
 
 use strict;

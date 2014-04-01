@@ -10,6 +10,7 @@ use Getopt::Long;
 use File::Temp qw(tempdir);
 use File::Path qw(rmtree);
 use File::Copy;
+use Set::Scalar;
 
 my $script_dir = $FindBin::Bin;
 
@@ -22,41 +23,57 @@ sub usage
 	       "\t-t [temp_dir]:  The temporary directory to use, must be accessible by all nodes for sge mode\n";
 }
 
+# read up entries from groups.txt into a set
+# reads entries like
+#  group_1: 1|a 2|b 3|c
+# into a set containing strings like
+#  '1|a 2|b 3|c', sorted by the id for comparisons.
+sub group_to_set
+{
+	my ($group_file) = @_;
+
+	open(my $fh, "<$group_file") or die "Could not open $group_file";
+
+	my $set = Set::Scalar->new;
+	while (my $line = readline($fh))
+	{
+		chomp($line);
+
+		my @tokens = split(/\s+/, $line);
+		shift(@tokens); # remove 'group_x: ' name as it's arbitrary
+
+		my $sorted_line = join(' ', sort {$a cmp $b} @tokens); # sort group ids so we can compare them
+		$set->insert($sorted_line);
+	}
+
+	close($fh);
+
+	return $set;
+}
+
 sub compare_groups
 {
 	my ($file1,$file2) = @_;
 
-	open(my $file1h, "<$file1") or die "Could not open $file1";
-	open(my $file2h, "<$file2") or die "Could not open $file2";
-	
-	my $matched = 1;
-	while(my $line1 = readline $file1h)
+	my $set1 = group_to_set($file1);
+	my $set2 = group_to_set($file2);
+
+	my $set1_minus_set2 = $set1 - $set2;
+	my $set2_minus_set1 = $set2 - $set1;
+
+	my $same = 1;
+	if (not $set1_minus_set2->is_empty)
 	{
-		my $line2 = readline $file2h;
-		chomp ($line1,$line2);
-
-		my @tokens1 = split(/\s+/,$line1);
-		my @tokens2 = split(/\s+/,$line2);
-
-		my $group_token1 = shift(@tokens1);
-		my $group_token2 = shift(@tokens2);
-
-		my $sorted_line1 = $group_token1.' '.join(' ', sort {$a cmp $b} @tokens1);
-		my $sorted_line2 = $group_token2.' '.join(' ', sort {$a cmp $b} @tokens2);
-		if ($sorted_line1 ne $sorted_line2)
-		{
-			print "line1: \"$line1\" not match line2 \"$line2\"";
-			$matched=0;
-			close($file1h);
-			close($file2h);
-
-			return $matched;
-		}
+		print "$file1 contains entries ".$set1_minus_set2." not in $file2\n";
+		$same = 0; 
 	}
-	close($file1h);
-	close($file2h);
+	if (not $set2_minus_set1->is_empty)
+	{
+		print "$file2 contains entries ".$set2_minus_set1." not in $file1\n";
+		$same = 0;
+	}
 
-	return $matched;
+	return $same;
 }
 
 sub setup_parameters

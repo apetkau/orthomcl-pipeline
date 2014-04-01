@@ -1,0 +1,6 @@
+group_1: 1|b 2|b 3|c
+group_2: 1|c 2|c 3|d
+group_3: 1|d 2|d 3|e
+group_4: 1|e 2|e 3|a
+group_5: 1|a 2|a 3|b
+group_6: 1|f 1|g

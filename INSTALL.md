@@ -1,14 +1,19 @@
-The OrthoMCL Pipeline is used to automate running of OrthoMCL
+Installing the OrthoMCL Pipeline
+================================
 
-Dependencies:
+Dependencies
+------------
 
-* OrthoMCL
-   * BLAST (blastall, formatdb)
-   * MCL
-* Perl
-* SGE if using SGE Scheduler (set in etc/orthomcl-pipeline.conf)
+In order to install the OrthoMCL Pipeline the following dependencies should be installed.
 
-Perl Libraries to install:
+* [OrthoMCL](http://orthomcl.org/common/downloads/software/v2.0/)
+   * [BLAST](http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download) (blastall, formatdb)
+   * [MCL](http://www.micans.org/mcl/index.html)
+* [MySQL Server](http://www.mysql.com/)
+* [Perl](www.perl.org/docs.html)
+* SGE or some other [DRMAAc](http://search.cpan.org/~tharsch/Schedule-DRMAAc-0.81/Schedule_DRMAAc.pod) grid scheduler if using SGE Scheduler (set in etc/orthomcl-pipeline.conf)
+
+In addition, the following Perl libraries should be installed.
 
 * BioPerl
 * DBD::mysql

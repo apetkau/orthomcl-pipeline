@@ -172,13 +172,13 @@ for my $test_num (@dirs)
 {
 	print "TESTING FULL PIPELINE RUN $test_num\n";
 
-	my $tempdir = tempdir('automcl.XXXXXX', DIR=> $temp_root);
+	my $tempdir = tempdir('orthomcl-pipeline.XXXXXX', DIR=> $temp_root);
 	my $out_dir = "$tempdir/output";
 	my $test_dir = "$data_dir/$test_num";
 
 	my ($test_ortho_config) = setup_parameters($test_dir, $tempdir, \%ortho_param);
 	
-	my $test_command1 = "$script_dir/../bin/nml_automcl --nocompliant --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/nml_automcl.err.log 1>$tempdir/nml_automcl.out.log";
+	my $test_command1 = "$script_dir/../bin/orthomcl-pipeline --nocompliant --scheduler $scheduler --yes -c $test_dir/etc/orthomcl-pipeline.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/orthomcl-pipeline.err.log 1>$tempdir/orthomcl-pipeline.out.log";
 	
 	#print $test_command1,"\n";
 	system($test_command1) == 0 or die "Could not execute command $test_command1\n";
@@ -203,17 +203,17 @@ for my $test_num (@dirs)
 {
 	print "TESTING FULL PIPELINE RUN $test_num\n";
 
-	my $tempdir = tempdir('automcl.XXXXXX', DIR=> "$temp_root");
+	my $tempdir = tempdir('orthomcl-pipeline.XXXXXX', DIR=> "$temp_root");
 	my $out_dir = "$tempdir/output";
 	my $test_dir = "$data_dir/$test_num";
 
 	my ($test_ortho_config) = setup_parameters($test_dir, $tempdir, \%ortho_param);
 	
-	my $test_command1_non_comp = "$script_dir/../bin/nml_automcl --nocompliant --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/nml_automcl_noncompliant.err.log 1>$tempdir/nml_automcl_noncompliant.out.log";
+	my $test_command1_non_comp = "$script_dir/../bin/orthomcl-pipeline --nocompliant --scheduler $scheduler --yes -c $test_dir/etc/orthomcl-pipeline.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/orthomcl-pipeline_noncompliant.err.log 1>$tempdir/orthomcl-pipeline_noncompliant.out.log";
 	my $ret_value = system($test_command1_non_comp);
 	ok($ret_value ne 0, "No compliant parameter successfully caught");
 
-	my $test_command1 = "$script_dir/../bin/nml_automcl --compliant --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/nml_automcl_compliant.err.log 1>$tempdir/nml_automcl_compliant.out.log";
+	my $test_command1 = "$script_dir/../bin/orthomcl-pipeline --compliant --scheduler $scheduler --yes -c $test_dir/etc/orthomcl-pipeline.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/orthomcl_pipeline_compliant.err.log 1>$tempdir/orthomcl_pipeline_compliant.out.log";
 	
 	#print $test_command1,"\n";
 	system($test_command1) == 0 or die "Could not execute command $test_command1\n";
@@ -222,7 +222,7 @@ for my $test_num (@dirs)
 	ok ($matched, "Pipeline succeeded with compliant parameter. Expected matched returned groups file");
 
 	# test compliant (default)
-	$test_command1 = "$script_dir/../bin/nml_automcl --scheduler $scheduler --yes -c $test_dir/etc/automcl.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/nml_automcl_compliant.err.log 1>$tempdir/nml_automcl_compliant.out.log";
+	$test_command1 = "$script_dir/../bin/orthomcl-pipeline --scheduler $scheduler --yes -c $test_dir/etc/orthomcl-pipeline.conf -i $test_dir/input -o $out_dir -m $test_ortho_config 2>$tempdir/orthomcl-pipeline_compliant.err.log 1>$tempdir/orthomcl_pipeline_compliant.out.log";
 	
 	#print $test_command1,"\n";
 	system($test_command1) == 0 or die "Could not execute command $test_command1\n";

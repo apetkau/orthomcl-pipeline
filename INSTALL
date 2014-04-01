@@ -1,4 +1,4 @@
-AutoMCL is used to automate running of OrthoMCL
+The OrthoMCL Pipeline is used to automate running of OrthoMCL
 Dependencies:
 	OrthoMCL
 		BLAST (blastall, formatdb)
@@ -21,8 +21,8 @@ Libraries can all be installed using CPAN or CPANM with:
 
 	Schedule::DRMAAc needs to be installed manually.
 
-Need to modify parameters in etc/automcl.conf.default and rename to automcl.conf
+Need to modify parameters in etc/orthomcl-pipeline.conf.default and rename to orthomcl-pipeline.conf
 
-Need to modify nml_automcl.example in bin/ to setup environment variables, and rename to nml_automcl.
+Need to modify orthomcl-pipeline.example in bin/ to setup environment variables, and rename to orthomcl-pipeline.
 
 Need to add bin/ to the PATH.

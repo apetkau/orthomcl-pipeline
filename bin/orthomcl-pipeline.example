@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Used only to be able to set extra perl5lib paths and then launch application
-# Rename to nml_automcl (or whatever other name you want the executable to be
+# Rename to orthomcl-pipeline (or whatever other name you want the executable to be
 # Note: if parametes contain any spaces and you quote them, won't be passed on properly
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 #export PERL5LIB=$SCRIPT_DIR/../cpanlib/lib/perl5:$PERL5LIB
 
-$SCRIPT_DIR/../perlbin/nml_automcl.pl $@
+$SCRIPT_DIR/../perlbin/orthomcl-pipeline.pl $@

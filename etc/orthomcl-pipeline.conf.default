@@ -1,4 +1,4 @@
-# move to automcl.conf
+# move to orthomcl-pipeline.conf
 %YAML 1.1
 ---
 path:

@@ -30,7 +30,7 @@ my @valid_fasta_extensions = ('.faa','.fasta');
 
 my $script_dir = $FindBin::Bin;
 
-my $default_config_path = "$script_dir/../etc/automcl.conf";
+my $default_config_path = "$script_dir/../etc/orthomcl-pipeline.conf";
 my $example_ortho_config = "$script_dir/../etc/orthomcl.config.example";
 
 my $all_fasta_name = 'goodProteins.fasta';
@@ -43,7 +43,7 @@ my $yes = undef;
 
 sub usage
 {
-"Usage: nml_automcl -i [input dir] -o [output dir] -m [orthmcl config] [Options]
+"Usage: orthomcl-pipeline -i [input dir] -o [output dir] -m [orthmcl config] [Options]
 	Options:
 	-i|--input-dir: The input directory containing the files to process.
 	-o|--output-dir: The output directory for the job.
@@ -59,21 +59,21 @@ sub usage
 	-h|--help:  Show help.
 
 	Examples:
-	nml_automcl -i input/ -o output/ -m orthomcl.config
+	orthomcl-pipeline -i input/ -o output/ -m orthomcl.config
 		Runs orthomcl using the input fasta files under input/ and orthomcl.confg as config file.
 		Places data in output/.  Gets other parameters (blast, etc) from default config file.
 
-	nml_automcl -i input/ -o output/ -m orthomcl.config -c automcl.conf
+	orthomcl-pipeline -i input/ -o output/ -m orthomcl.config -c orthomcl-pipeline.conf
 		Runs orthomcl using the given input/output directories.  Overrides parameters (blast, etc)
-		from file automcl.conf.
+		from file orthomcl-pipeline.conf.
 
-	nml_automcl --print-config
-		Prints default automcl.conf config file (which can then be changed).
+	orthomcl-pipeline --print-config
+		Prints default orthomcl-pipeline.conf config file (which can then be changed).
 
-	nml_automcl --print-orthomcl-config
+	orthomcl-pipeline --print-orthomcl-config
 		Prints orthomcl example config file which must be changed to properly run.
 
-	nml_automcl -i input/ -o output/ -m orthomcl.confg --compliant
+	orthomcl-pipeline -i input/ -o output/ -m orthomcl.confg --compliant
 		Runs orthmcl with the given input/output/config files.
 		Skips the orthomclAdjustFasta stage on input files.\n";
 }

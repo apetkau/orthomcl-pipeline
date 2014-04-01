@@ -41,6 +41,10 @@ my $orthoParams; # stores main parameters
 
 my $yes = undef;
 
+my $git_dir = "$script_dir/../.git";
+
+my $git_commit = (-e $git_dir) ? `git --git-dir \"$git_dir\" rev-parse HEAD` : "unknown";
+
 sub usage
 {
 "Usage: orthomcl-pipeline -i [input dir] -o [output dir] -m [orthmcl config] [Options]
@@ -75,7 +79,11 @@ sub usage
 
 	orthomcl-pipeline -i input/ -o output/ -m orthomcl.confg --compliant
 		Runs orthmcl with the given input/output/config files.
-		Skips the orthomclAdjustFasta stage on input files.\n";
+		Skips the orthomclAdjustFasta stage on input files.
+
+	Version:
+	Git: https://github.com/apetkau/orthomcl-pipeline
+	Commit: $git_commit\n";
 }
 
 sub set_scheduler
@@ -945,6 +953,7 @@ $config_out->write("$log_dir/run.properties");
 $config_out = undef;
 
 print "Starting OrthoMCL pipeline on: ".(localtime)."\n";
+print "Git commit: $git_commit\n";
 my $begin_time = time;
 
 validate_files(1, $input_dir, $compliant, $log_dir);

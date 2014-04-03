@@ -1,6 +1,10 @@
 Installing the OrthoMCL Pipeline
 ================================
 
+Installing the OrthoMCL Pipeline can be accomplished by downloading the code with the following command and then installing any neccessary dependencies.
+
+	$ git clone https://github.com/apetkau/orthomcl-pipeline.git
+
 Dependencies
 ------------
 

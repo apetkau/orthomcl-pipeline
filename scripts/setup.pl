@@ -4,10 +4,21 @@
 
 use FindBin;
 use YAML::Tiny;
+
+# dependency modules
+use Bio::SeqIO;
+use DBD::mysql;
+use DBI;
+use Getopt::Long;
+use Parallel::ForkManager;
 use File::Basename;
+use Set::Scalar;
+use Test::More;
+use Text::Table;
+use YAML::Tiny;
 
 my $script_dir = $FindBin::Bin;
-my $config_dir = "$script_dir/etc";
+my $config_dir = "$script_dir/../etc";
 my $config_file = "$config_dir/orthomcl-pipeline.conf.default";
 my $out_config_file = "$config_dir/orthomcl-pipeline.conf";
 

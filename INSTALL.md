@@ -1,23 +1,14 @@
 Installing the OrthoMCL Pipeline
 ================================
 
-Installing the OrthoMCL Pipeline can be accomplished by downloading the code with the following command and then installing any neccessary dependencies.
+Installing the OrthoMCL Pipeline can be accomplished by downloading the code with the following command and then following the steps below.
 
 	$ git clone https://github.com/apetkau/orthomcl-pipeline.git
 
-Dependencies
-------------
+Step 1: Perl Dependencies
+-------------------------
 
-In order to install the OrthoMCL Pipeline the following dependencies should be installed.
-
-* [OrthoMCL](http://orthomcl.org/common/downloads/software/v2.0/)
-   * [BLAST](http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download) (blastall, formatdb)
-   * [MCL](http://www.micans.org/mcl/index.html)
-* [MySQL Server](http://www.mysql.com/)
-* [Perl](www.perl.org/docs.html)
-* SGE or some other [DRMAAc](http://search.cpan.org/~tharsch/Schedule-DRMAAc-0.81/Schedule_DRMAAc.pod) grid scheduler if using SGE Scheduler (set in etc/orthomcl-pipeline.conf)
-
-In addition, the following Perl libraries should be installed.
+The OrthoMCL Pipeline requires Perl as well as the following Perl modules.
 
 * BioPerl
 * DBD::mysql
@@ -26,14 +17,58 @@ In addition, the following Perl libraries should be installed.
 * Schedule::DRMAAc
 * YAML::Tiny
 
-Libraries can all be installed using CPAN or CPANM with:
+These can be installed with [cpanm](http://search.cpan.org/dist/App-cpanminus/lib/App/cpanminus.pm) using:
 
 	$ cpanm BioPerl DBD::mysql DBI Parallel::ForkManager YAML::Tiny
+	
+If you wish to use a grid engine to submit jobs then [Schedule::DRMAAc](http://search.cpan.org/~tharsch/Schedule-DRMAAc-0.81/Schedule_DRMAAc.pod) must be installed.  This must be done manually.
 
-Schedule::DRMAAc needs to be installed manually.
 
-Need to modify parameters in **etc/orthomcl-pipeline.conf.default** and rename to **etc/orthomcl-pipeline.conf**
+Step 2: Other Dependencies
+--------------------------
 
-Need to modify **bin/orthomcl-pipeline.example** to setup environment variables, and rename to **bin/orthomcl-pipeline**.
+Additional software dependencies for the pipeline are as follows:
 
-Need to add **bin/** to the PATH.
+* [OrthoMCL](http://orthomcl.org/common/downloads/software/v2.0/)
+   * [BLAST](http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download) (blastall, formatdb)
+   * [MCL](http://www.micans.org/mcl/index.html)
+
+The paths to the software dependencies must be setup within the **etc/orthomcl-pipeline.conf** file.  These software dependencies can be checked and the configuration file created using the **scripts/setup.pl** script as below:
+
+	$ perl scripts/setup.pl
+	Checking for Software dependencies...
+	Checking for OthoMCL ... OK
+	Checking for formatdb ... OK
+	Checking for blastall ... OK
+	Checking for mcl ... OK
+	Wrote new configuration to orthomcl-pipeline/scripts/../etc/orthomcl-pipeline.conf
+	
+The configuration file generated looks like:
+
+```
+---
+blast:
+  F: 'm S'
+  b: 100000
+  e: 1e-5
+  v: 100000
+filter:
+  max_percent_stop: 20
+  min_length: 10
+mcl:
+  inflation: 1.5
+path:
+  blastall: '/usr/bin/blastall'
+  formatdb: '/usr/bin/formatdb'
+  mcl: '/usr/local/bin/mcl'
+  orthomcl: '/home/aaron/software/orthomcl/bin'
+scheduler: fork
+split: 480
+```
+
+Step 3: Database Setup
+----------------------
+
+The OrthoMCL also requires a SQL database such as [MySQL](http://www.mysql.com/) to be setup in order to load and process some of the results.  Both an account and a separate database need to be created specifically for OrthoMCL.
+
+Once the database is setup, a special OrthoMCL configuration file needs to be generated with parameters and database connection information.  This can be generated automatically with the script **scripts/setup_database.pl**.

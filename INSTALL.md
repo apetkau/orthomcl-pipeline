@@ -16,12 +16,14 @@ The OrthoMCL Pipeline requires Perl as well as the following Perl modules.
 * Parallel::ForkManager
 * Schedule::DRMAAc
 * YAML::Tiny
+* Set::Scalar
+* Text::Table
 
 These can be installed with [cpanm](http://search.cpan.org/dist/App-cpanminus/lib/App/cpanminus.pm) using:
 
-	$ cpanm BioPerl DBD::mysql DBI Parallel::ForkManager YAML::Tiny
+	$ cpanm BioPerl DBD::mysql DBI Parallel::ForkManager YAML::Tiny Set::Scalar Text::Table Exception::Class Test::Most Test::Warn Test::Exception Test::Deep
 	
-If you wish to use a grid engine to submit jobs then [Schedule::DRMAAc](http://search.cpan.org/~tharsch/Schedule-DRMAAc-0.81/Schedule_DRMAAc.pod) must be installed.  This must be done manually.
+If you wish to use a grid engine to submit jobs then [Schedule::DRMAAc](http://search.cpan.org/~tharsch/Schedule-DRMAAc-0.81/Schedule_DRMAAc.pod) must be installed and the parameter **sge** must be used for the scheduler in the config file and tests.  This must be done manually.
 
 
 Step 2: Other Dependencies

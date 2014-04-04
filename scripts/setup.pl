@@ -4,6 +4,8 @@
 
 use FindBin;
 use YAML::Tiny;
+use File::Copy;
+
 
 # dependency modules
 use Bio::SeqIO;
@@ -21,6 +23,9 @@ my $script_dir = $FindBin::Bin;
 my $config_dir = "$script_dir/../etc";
 my $config_file = "$config_dir/orthomcl-pipeline.conf.default";
 my $out_config_file = "$config_dir/orthomcl-pipeline.conf";
+my $bin_dir = "$script_dir/../bin";
+my $out_bin_file_default = "$bin_dir/orthomcl-pipeline.example";
+my $out_bin_file = "$bin_dir/orthomcl-pipeline";
 
 # reading example configuration file
 my $yaml = YAML::Tiny->read($config_file);
@@ -51,6 +56,16 @@ else
 {
 	$yaml->write($out_config_file);
 	print "Wrote new configuration to $out_config_file\n";
+}
+
+if (not -e $out_bin_file)
+{
+	copy($out_bin_file_default,$out_bin_file) or die "Could not copy ".
+		"$out_bin_file_default to $out_bin_file";
+	chmod 0766, $out_bin_file;
+
+	print "Wrote executable file to $out_bin_file\n";
+	print "Please add directory $bin_dir to PATH\n";
 }
 
 # checks software dependencies and fills in paths in YAML data structure

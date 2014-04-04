@@ -42,6 +42,8 @@ The paths to the software dependencies must be setup within the **etc/orthomcl-p
 	Checking for blastall ... OK
 	Checking for mcl ... OK
 	Wrote new configuration to orthomcl-pipeline/scripts/../etc/orthomcl-pipeline.conf
+	Wrote executable file to orthomcl-pipeline/scripts/../bin/orthomcl-pipeline
+	Please add directory orthomcl-pipeline/scripts/../bin to PATH
 	
 The configuration file **etc/orthomcl-pipeline.conf** generated looks like:
 
@@ -113,3 +115,15 @@ Once the OrthoMCL configuration file is generated a full test of the pipeline ca
 	...
 
 Once all tests have passed then you are ready to start using the OrthoMCL pipeline.  If you wish to test the grid scheduler mode of the pipeline please change **-s fork** to **-s sge** and re-run the tests.
+
+Step 5: Running
+---------------
+
+You should now be able to run the pipeline with:
+
+	$ ./bin/orthomcl-pipeline
+	Error: no input-dir defined
+	Usage: orthomcl-pipeline -i [input dir] -o [output dir] -m [orthmcl config] [Options]
+	...
+
+You can now follow the main instructions for how to perform OrthoMCL analyses.

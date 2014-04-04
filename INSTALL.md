@@ -73,4 +73,41 @@ Step 3: Database Setup
 
 The OrthoMCL also requires a SQL database such as [MySQL](http://www.mysql.com/) to be setup in order to load and process some of the results.  Both an account and a separate database need to be created specifically for OrthoMCL.
 
-Once the database is setup, a special OrthoMCL configuration file needs to be generated with parameters and database connection information.  This can be generated automatically with the script **scripts/setup_database.pl**.
+Once the database is setup, a special OrthoMCL configuration file needs to be generated with parameters and database connection information.  This can be generated automatically with the script **scripts/setup_database.pl** as follows:
+
+	$ perl scripts/setup_database.pl --user orthomcl --password orthomcl --host localhost --database orthomcl > orthomcl.conf
+	Connecting to database orthomcl on host localhost with user orthomcl ...OK
+	
+This will generate a file **orthomcl.conf** with database connection information and other parameters.  This file looks like:
+
+```
+coOrthologTable=CoOrtholog
+dbConnectString=dbi:mysql:orthomcl:localhost:mysql_local_infile=1
+dbLogin=orthomcl
+dbPassword=orthomcl
+dbVendor=mysql 
+evalueExponentCutoff=-5
+inParalogTable=InParalog
+interTaxonMatchView=InterTaxonMatch
+oracleIndexTblSpc=NONE
+orthologTable=Ortholog
+percentMatchCutoff=50
+similarSequencesTable=SimilarSequences
+```
+
+Step 4: Testing
+---------------
+
+Once the OrthoMCL configuration file is generated a full test of the pipeline can be run as follows:
+
+	$ perl t/test_pipeline.pl -m orthomcl.conf -s fork -t /tmp
+	Test using scheduler fork
+	
+	TESTING NON-COMPLIANT INPUT
+	TESTING FULL PIPELINE RUN 3
+	README:
+	Tests case of one gene (in 1.fasta and 2.fasta) not present in other files.
+	ok 1 - Expected matched returned groups file
+	...
+
+Once all tests have passed then you are ready to start using the OrthoMCL pipeline.  If you wish to test the grid scheduler mode of the pipeline please change **-s fork** to **-s sge** and re-run the tests.

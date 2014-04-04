@@ -68,6 +68,8 @@ split: 4
 
 The parameters in this file can be adjusted to fine-tune the pipeline.  In particular, you may want to adjust the **split: 4** parameter to a reasonable value.  This corresponds to the default number of processing cores to use for the BLAST stage (defines the number of chunks to split the FASTA file into).
 
+You may also want to adjust the **scheduler: fork** to **scheduler: sge** if you are attempting to use a grid scheduler (with DRMAAc) to run OrthoMCL.
+
 Step 3: Database Setup
 ----------------------
 

@@ -8,7 +8,7 @@ path:
 	mcl: /path/to/mcl
 
 # other default parameters
-split: 480
+split: 4
 
 filter:
 	min_length: 10

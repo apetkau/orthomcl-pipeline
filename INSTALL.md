@@ -43,7 +43,7 @@ The paths to the software dependencies must be setup within the **etc/orthomcl-p
 	Checking for mcl ... OK
 	Wrote new configuration to orthomcl-pipeline/scripts/../etc/orthomcl-pipeline.conf
 	
-The configuration file generated looks like:
+The configuration file **etc/orthomcl-pipeline.conf** generated looks like:
 
 ```
 ---
@@ -63,8 +63,10 @@ path:
   mcl: '/usr/local/bin/mcl'
   orthomcl: '/home/aaron/software/orthomcl/bin'
 scheduler: fork
-split: 480
+split: 4
 ```
+
+The parameters in this file can be adjusted to fine-tune the pipeline.  In particular, you may want to adjust the **split: 4** parameter to a reasonable value.  This corresponds to the default number of processing cores to use for the BLAST stage (defines the number of chunks to split the FASTA file into).
 
 Step 3: Database Setup
 ----------------------

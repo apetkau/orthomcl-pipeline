@@ -27,6 +27,27 @@ my $bin_dir = "$script_dir/../bin";
 my $out_bin_file_default = "$bin_dir/orthomcl-pipeline.example";
 my $out_bin_file = "$bin_dir/orthomcl-pipeline";
 
+my $usage = "Usage: ".basename($0)." [--force] [--help]\n".
+"Checks for software dependencies and generates configuration files and binary files in etc/ and bin/\n".
+"Options:\n".
+"--force: Force overwrite of configuration files\n".
+"-h|--help:  Print usage statement\n";
+
+my $force;
+my $help;
+if (not GetOptions('h|help' => \$help,
+		'f|force' => \$force))
+{
+	die $usage;
+}
+
+$force = 0 if (not defined $force);
+if (defined $help and $help)
+{
+	print $usage;
+	exit 0;
+}
+
 # reading example configuration file
 my $yaml = YAML::Tiny->read($config_file);
 die "Error: coult not read $config_file" if (not defined $yaml);
@@ -37,7 +58,7 @@ print "Checking for Software dependencies...\n";
 my $paths = $config->{'path'};
 check_software($paths);
 
-if (-e $out_config_file)
+if (not $force and -e $out_config_file)
 {
 	print "Warning: file $out_config_file already exists ... overwrite? (Y/N) ";
 	my $choice = <STDIN>;
@@ -58,7 +79,7 @@ else
 	print "Wrote new configuration to $out_config_file\n";
 }
 
-if (not -e $out_bin_file)
+if ((not -e $out_bin_file) or $force)
 {
 	copy($out_bin_file_default,$out_bin_file) or die "Could not copy ".
 		"$out_bin_file_default to $out_bin_file";

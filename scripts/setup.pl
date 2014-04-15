@@ -18,6 +18,10 @@ use Set::Scalar;
 use Test::More;
 use Text::Table;
 use YAML::Tiny;
+use Algorithm::Combinatorics;
+use SVG;
+use Moose;
+use Pod::Usage;
 
 my $script_dir = $FindBin::Bin;
 my $config_dir = "$script_dir/../etc";
@@ -63,7 +67,7 @@ if (not $force and -e $out_config_file)
 	print "Warning: file $out_config_file already exists ... overwrite? (Y/N) ";
 	my $choice = <STDIN>;
 	chomp $choice;
-	if ("yes" eq lc($choic) or "y" eq lc($choice))
+	if ("yes" eq lc($choice) or "y" eq lc($choice))
 	{
 		$yaml->write($out_config_file);
 		print "Wrote new configuration to $out_config_file\n";

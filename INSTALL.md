@@ -18,10 +18,13 @@ The OrthoMCL Pipeline requires Perl as well as the following Perl modules.
 * YAML::Tiny
 * Set::Scalar
 * Text::Table
+* Moose
+* SVG
+* Algorithm::Combinatorics
 
 These can be installed with [cpanm](http://search.cpan.org/dist/App-cpanminus/lib/App/cpanminus.pm) using:
 
-	$ cpanm BioPerl DBD::mysql DBI Parallel::ForkManager YAML::Tiny Set::Scalar Text::Table Exception::Class Test::Most Test::Warn Test::Exception Test::Deep
+	$ cpanm BioPerl DBD::mysql DBI Parallel::ForkManager YAML::Tiny Set::Scalar Text::Table Exception::Class Test::Most Test::Warn Test::Exception Test::Deep Moose SVG Algorithm::Combinatorics
 	
 If you wish to use a grid engine to submit jobs then [Schedule::DRMAAc](http://search.cpan.org/~tharsch/Schedule-DRMAAc-0.81/Schedule_DRMAAc.pod) must be installed and the parameter **sge** must be used for the scheduler in the config file and tests.  This must be done manually and requires installing a grid engine.  A useful guide for how to install a grid engine on Ubuntu can be found at http://scidom.wordpress.com/2012/01/18/sge-on-single-pc/.
 

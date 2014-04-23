@@ -40,7 +40,7 @@ Additional software dependencies for the pipeline are as follows:
 
 The paths to the software dependencies must be setup within the **etc/orthomcl-pipeline.conf** file.  These software dependencies can be checked and the configuration file created using the **scripts/setup.pl** script as below:
 
-	$ perl scripts/setup.pl
+	$ perl scripts/orthomcl-pipeline-setup.pl
 	Checking for Software dependencies...
 	Checking for OthoMCL ... OK
 	Checking for formatdb ... OK
@@ -84,7 +84,7 @@ The OrthoMCL also requires a SQL database such as [MySQL](http://www.mysql.com/)
 
 Once the database is setup, a special OrthoMCL configuration file needs to be generated with parameters and database connection information.  This can be generated automatically with the script **scripts/setup_database.pl** as follows:
 
-	$ perl scripts/setup_database.pl --user orthomcl --password orthomcl --host localhost --database orthomcl > orthomcl.conf
+	$ perl scripts/orthomcl-setup-database.pl --user orthomcl --password orthomcl --host localhost --database orthomcl > orthomcl.conf
 	Connecting to database orthomcl on host localhost with user orthomcl ...OK
 	
 This will generate a file **orthomcl.conf** with database connection information and other parameters.  This file looks like:

@@ -34,7 +34,7 @@ Step 2: Other Dependencies
 
 Additional software dependencies for the pipeline are as follows:
 
-* [OrthoMCL](http://orthomcl.org/common/downloads/software/v2.0/)
+* [OrthoMCL](http://orthomcl.org/common/downloads/software/v2.0/) or [OrthoMCL Custom](https://github.com/apetkau/orthomclsoftware-custom) (changes to characters defining sequence identifiers)
    * [BLAST](http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download) (blastall, formatdb)
    * [MCL](http://www.micans.org/mcl/index.html)
 

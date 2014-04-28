@@ -87,7 +87,7 @@ if ((not -e $out_bin_file) or $force)
 {
 	copy($out_bin_file_default,$out_bin_file) or die "Could not copy ".
 		"$out_bin_file_default to $out_bin_file";
-	chmod 0766, $out_bin_file;
+	chmod 0755, $out_bin_file;
 
 	print "Wrote executable file to $out_bin_file\n";
 	print "Please add directory $bin_dir to PATH\n";

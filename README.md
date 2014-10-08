@@ -19,7 +19,7 @@ The brief overview of running the OrthoMCL pipeline is as follows:
 3. Run the following command to start OrthoMCL.
 
    ```bash
-   orthomcl-pipeline -i input/ -o output/ -m orthomcl.conf
+   perl scripts/orthomcl-pipeline.pl -i input/ -o output/ -m orthomcl.conf
    ```
 
    Where `input/` contains a set of gene annotations in FASTA format, one file per genome (e.g. `genome1.fasta`, `genome2.fasta`), `output/` is the location to store the OrthoMCL output files, and `orthomcl.conf` is the OrthoMCL configuration file generated in step 2.

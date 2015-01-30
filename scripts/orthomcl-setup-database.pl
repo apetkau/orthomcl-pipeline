@@ -16,15 +16,16 @@ my $script_dir = $FindBin::Bin;
 
 my $default_config = "$script_dir/../etc/orthomcl.config.example";
 
-my $usage = "Usage: ".basename($0)." --user [user] --password [password] --host [host] --database [database]\n".
+my $usage = "Usage: ".basename($0)." --user [user] --password [password] --host [host] --database [database] --outfile [outfile]\n".
 "Checks for a database connection and generates an orthomcl config file with the given parameters\n";
 
-my ($user,$password,$host, $database);
+my ($user,$password,$host, $database, $outfile);
 if (not GetOptions(
 	'user=s' => \$user,
 	'password=s' => \$password,
 	'host=s' => \$host,
-	'database=s' => \$database))
+	'database=s' => \$database,
+	'outfile=s' => \$outfile))
 {
 	die "$!\n".$usage;
 }
@@ -32,16 +33,17 @@ if (not GetOptions(
 if (not (defined $user and
 	 defined $password and
 	 defined $host and
-	 defined $database))
+	 defined $database and
+	 defined $outfile))
 {
 	die "missing database information\n".$usage;
 }
 
 my $parameters = parse_config($default_config);
 
-print STDERR "Connecting to database $database on host $host with user $user ...";
-my $db_connect_string = "dbi:mysql:$database:$host:mysql_local_infile=1";
-my $dbh = DBI->connect($db_connect_string,$user,$password, {RaiseError => 1, AutoCommit => 0});
+print STDERR "Connecting to mysql and creating database $database on host $host with user $user ...\n";
+my $db_connect = "dbi:mysql:mysql:$host:mysql_local_infile=1";
+my $dbh = DBI->connect($db_connect,$user,$password, {RaiseError => 1, AutoCommit => 0});
 if (not defined $dbh)
 {
 	die "error connecting to database";
@@ -50,6 +52,36 @@ else
 {
 	print STDERR "OK\n";
 }
+
+my $rc = $dbh->do("SHOW DATABASES LIKE '$database'");
+if ($rc == 1)
+{
+    die "Database $database already exists, please choose a new database name";
+}
+else
+{
+    # Database doesn't already exists. Check if config file already exists.
+    if (-e $outfile)
+    {
+        print STDERR "Warning: file $outfile already exists ... overwrite? (Y/N) ";
+        my $choice = <STDIN>;
+        chomp $choice;
+        if ("yes" eq lc($choice) or "y" eq lc($choice))
+        {
+           print STDERR "$outfile will be overwritten\n";
+        }
+        else
+        {
+            die "Config file will not be overwritten, please choose a new name and try again!"; 
+        }
+    }     
+   
+    $dbh->do("CREATE DATABASE $database")
+    or die "Couldn't create database $database";
+    print STDERR "OK, database $database created.\n";
+}
+# once database is created, create the db_connect_string to use in config file
+my $db_connect_string = "dbi:mysql:$database:$host:mysql_local_infile=1";
 
 $parameters->{'dbConnectString'} = $db_connect_string;
 $parameters->{'dbLogin'} = $user;
@@ -61,11 +93,16 @@ sub write_config
 {
 	my ($parameters) = @_;
 
+	unless(open FILE,'>',$outfile){
+		die "Unable to create $outfile\n"
+	}
 	foreach my $key (sort {$a cmp $b} keys %$parameters)
 	{
 		my $value = $parameters->{$key};
-		print "$key=$value\n";
+		print FILE "$key=$value\n";
 	}
+    print STDERR "Config file $outfile created.\n";
+	close FILE;
 }
 
 sub parse_config
@@ -92,4 +129,9 @@ sub parse_config
 	close($fh);
 
 	return \%parameters;
+}
+
+END
+{
+    $dbh->disconnect();
 }

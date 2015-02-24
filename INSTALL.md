@@ -80,12 +80,16 @@ You may also want to adjust the **scheduler: fork** to **scheduler: sge** if you
 Step 3: Database Setup
 ----------------------
 
-The OrthoMCL also requires a SQL database such as [MySQL](http://www.mysql.com/) to be setup in order to load and process some of the results.  Both an account and a separate database need to be created specifically for OrthoMCL.
+The OrthoMCL also requires a [MySQL](http://www.mysql.com/) database to be setup in order to load and process some of the results.  An account needs to be created specifically for OrthoMCL. The account must be granted to have SELECT, INSERT, UPDATE, DELETE and CREATE permissions by logging into the MySQL server as root and executing the following command:
+	
+	mysql> GRANT SELECT, INSERT, UPDATE, DELETE, CREATE on *.* to orthomcl
 
-Once the database is setup, a special OrthoMCL configuration file needs to be generated with parameters and database connection information.  This can be generated automatically with the script **scripts/setup_database.pl** as follows:
+Once the user account is setup, a the database and aspecial OrthoMCL configuration file need to be generated with parameters and database connection information.  This can be generated automatically with the script **scripts/setup_database.pl** as follows:
 
-	$ perl scripts/orthomcl-setup-database.pl --user orthomcl --password orthomcl --host localhost --database orthomcl > orthomcl.conf
+	$ perl scripts/orthomcl-setup-database.pl --user orthomcl --password orthomcl --host localhost --database orthomcl --outfile orthomcl.conf
 	Connecting to database orthomcl on host localhost with user orthomcl ...OK
+	Database orthomcl created ...OK
+	Config file **orthomcl.conf** created.
 	
 This will generate a file **orthomcl.conf** with database connection information and other parameters.  This file looks like:
 

@@ -16,18 +16,19 @@ my $script_dir = $FindBin::Bin;
 
 my $default_config = "$script_dir/../etc/orthomcl.config.example";
 
-my $usage = "Usage: ".basename($0)."\n --user [user] --password [password] --host [host] --database [database] --outfile [outfile]\n".
-"\nChecks for a database connection, creates a database and generates an orthomcl config file with the given parameters.\n".
+my $usage = "Usage: ".basename($0)."\n --user [user] --password [password] --host [host] --database [database] --outfile [outfile] --no-create-database\n".
+"\nChecks for a database connection, creates a database (when not suppressed) and generates an orthomcl config file with the given parameters.\n".
 "Note this script requires a MySQL database.\n".
-"The database name provided does not need to exist and will be created.\n".
+"The database name provided does not need to exist and will be created unless option --no-create-database is used.\n".
 "Ensure the user has permissions to create, modify and delete databases.\n\n";
 
-my ($user,$password,$host, $database, $outfile);
+my ($user,$password,$host, $database, $outfile, $no_create_db );
 if (not GetOptions(
 	'user=s' => \$user,
 	'password=s' => \$password,
 	'host=s' => \$host,
 	'database=s' => \$database,
+	'no-create-database' => \$no_create_db,
 	'outfile=s' => \$outfile))
 {
 	die "$!\n".$usage;
@@ -43,48 +44,72 @@ if (not (defined $user and
 }
 
 my $parameters = parse_config($default_config);
+my $dbh;
 
-print STDERR "Connecting to mysql and creating database $database on host $host with user $user ...";
-my $db_connect = "dbi:mysql:mysql:$host:mysql_local_infile=1";
-my $dbh = DBI->connect($db_connect,$user,$password, {RaiseError => 1, AutoCommit => 0});
-if (not defined $dbh)
+# Check if config file already exists.
+if (-e $outfile)
 {
-	die "error connecting to database";
-}
-else
-{
-	print STDERR "OK\n";
-}
-
-my $rc = $dbh->do("SHOW DATABASES LIKE '$database'");
-if ($rc == 1)
-{
-	close_db();
-    die "Database $database already exists, please choose a new database name";
-}
-else
-{
-    # Database doesn't already exists. Check if config file already exists.
-    if (-e $outfile)
+    print STDERR "Warning: file $outfile already exists ... overwrite? (Y/N) ";
+    my $choice = <STDIN>;
+    chomp $choice;
+    if ("yes" eq lc($choice) or "y" eq lc($choice))
     {
-        print STDERR "Warning: file $outfile already exists ... overwrite? (Y/N) ";
-        my $choice = <STDIN>;
-        chomp $choice;
-        if ("yes" eq lc($choice) or "y" eq lc($choice))
-        {
-           print STDERR "\n$outfile will be overwritten\n";
-        }
-        else
-        {
-        	close_db();
-            die "\nConfig file will not be overwritten, please choose a new name and try again!"; 
-        }
-    }     
-   
-    $dbh->do("CREATE DATABASE $database")
-    or die "\nCouldn't create database $database";
-    print STDERR "database $database created ...OK\n";
-    close_db();
+       print STDERR "\nConfig file, $outfile will be overwritten\n";
+    }
+    else
+    {
+        die "\nConfig file will not be overwritten, please choose a new name and try again!"; 
+    }
+} 
+
+if(defined $no_create_db)
+{
+	# User already has a database to use
+	# Check that can connect to database
+	print STDERR "Connecting to database $database on host $host with user $user ...\n";
+	my $db_connect = "dbi:mysql:$database:$host:mysql_local_infile=1";
+	$dbh = DBI->connect($db_connect,$user,$password, {RaiseError => 0, AutoCommit => 0});
+	if (not defined $dbh)
+	{
+		# Not able to connect to previously created database
+		die "error connecting to database (please ensure database exists and try again)";
+	}
+	else
+	{
+		print STDERR "OK\n";
+		close_db();
+	}
+} 
+else
+{
+	# User wants to create a new database
+	# Connect to server and create new database
+	print STDERR "Connecting to mysql and creating database $database on host $host with user $user ...\n";
+	my $db_connect_create = "dbi:mysql:mysql:$host:mysql_local_infile=1";
+	$dbh = DBI->connect($db_connect_create,$user,$password, {RaiseError => 0, AutoCommit => 0});
+	if (not defined $dbh)
+	{
+		# not able to connect to my sql database
+		die "error connecting to database";
+	}
+	else
+	{
+		print STDERR "OK\n";
+	}
+
+	my $rc = $dbh->do("SHOW DATABASES LIKE '$database'");
+	if ($rc == 1)
+	{
+		close_db();
+	    die "Database $database already exists, please choose a new database name";
+	}
+	else
+	{
+	    $dbh->do("CREATE DATABASE $database")
+	    or die "\nCouldn't create database $database";
+	    print STDERR "database $database created ...OK\n";
+	    close_db();
+	}
 }
 # once database is created, create the db_connect_string to use in config file
 my $db_connect_string = "dbi:mysql:$database:$host:mysql_local_infile=1";

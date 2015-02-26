@@ -60,7 +60,7 @@ sub usage
 	--print-orthomcl-config:  Prints example orthomcl config file.
 	--yes: Automatically answers yes to every question (could overwrite/delete old data).
 	--scheduler: Defined scheduler (sge or fork).
-	--no-cleanup
+	--no-cleanup: Does not remove temporary tables from database.
 	-h|--help:  Show help.
 
 	Examples:

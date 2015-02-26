@@ -60,6 +60,7 @@ sub usage
 	--print-orthomcl-config:  Prints example orthomcl config file.
 	--yes: Automatically answers yes to every question (could overwrite/delete old data).
 	--scheduler: Defined scheduler (sge or fork).
+	--no-cleanup
 	-h|--help:  Show help.
 
 	Examples:
@@ -80,6 +81,10 @@ sub usage
 	orthomcl-pipeline -i input/ -o output/ -m orthomcl.confg --compliant
 		Runs orthmcl with the given input/output/config files.
 		Skips the orthomclAdjustFasta stage on input files.
+
+	orthomcl-pipeline -i input/ -o output/ -m orthomcl.confg --no-cleanup
+		Runs orthmcl with the given input/output/config files.
+		Does not cleanup temporary tables.
 
 	Version:
 	Git: https://github.com/apetkau/orthomcl-pipeline
@@ -603,7 +608,7 @@ sub ortho_load
 
 sub ortho_pairs
 {
-	my ($stage_num, $ortho_config, $log_dir) = @_;
+	my ($stage_num, $ortho_config, $log_dir, $cleanup) = @_;
 
 	my $ortho_log = "$log_dir/$stage_num.orthomclPairs.log";
 
@@ -616,7 +621,7 @@ sub ortho_pairs
 
 	my $abs_ortho_config = File::Spec->rel2abs($ortho_config);
 
-	my $param_keys = ["$abs_ortho_config", "$ortho_log", "cleanup=yes"];
+	my $param_keys = ["$abs_ortho_config", "$ortho_log", "cleanup=$cleanup"];
 	my $param_values = [undef, undef, undef];
 
 	$job_runner->submit_job($pairsbin, $param_keys, $param_values, "$ortho_log.stdout", "$ortho_log.stderr");
@@ -809,6 +814,8 @@ my $main_config;
 my $compliant = 1;
 my $print_config;
 my $print_orthomcl_config;
+my $no_cleanup;
+my $cleanup = 'yes';
 my $help;
 my $yes_opt;
 my $scheduler;
@@ -824,6 +831,7 @@ if (!GetOptions(
 	'compliant!' => \$compliant,
 	'print-config' => \$print_config,
 	'print-orthomcl-config' => \$print_orthomcl_config,
+	'no-cleanup' => \$no_cleanup,
 	'h|help' => \$help))
 {
 	die "$!".usage;
@@ -865,6 +873,11 @@ if (defined $print_orthomcl_config and $print_orthomcl_config)
 	close($ch);
 	exit 0;
 }
+
+if (defined $no_cleanup)
+{
+	$cleanup = 'no';
+} 
 
 
 die "Error: no input-dir defined\n".usage if (not defined $input_dir);
@@ -974,7 +987,7 @@ format_database(7, $blast_dir, $log_dir);
 perform_blast(8, $blast_dir, $blast_results_dir, $split_number, $blast_log_dir);
 parseblast(9, $blast_results_dir, $blast_load_dir, $orthomcl_config, $compliant_dir, $log_dir);
 ortho_load(10, $orthomcl_config, $blast_load_dir, $log_dir);
-ortho_pairs(11, $orthomcl_config, $log_dir);
+ortho_pairs(11, $orthomcl_config, $log_dir, $cleanup);
 ortho_dump_pairs(12, $orthomcl_config, $pairs_dir, $log_dir);
 run_mcl(13, $pairs_dir, $log_dir);
 mcl_to_groups(14, $pairs_dir, $groups_dir, $log_dir);

@@ -82,8 +82,8 @@ Step 3: Database Setup
 
 The OrthoMCL also requires a [MySQL](http://www.mysql.com/) database to be setup in order to load and process some of the results.  An account needs to be created specifically for OrthoMCL. A special OrthoMCL configuration file needs to be generated with parameters and database connection information.  This can be generated automatically with the script **scripts/setup_database.pl**. There are two options for running this script as outlined below:
 
-Option 1: 
-	If you have a previously created database you can run the script with the option: --no-create-database
+Option 1: If you have a previously created database you can run the script with the option: --no-create-database
+
 	$ perl scripts/orthomcl-setup-database.pl --user orthomcl --password orthomcl --host localhost --database orthomcl --outfile orthomcl.conf --no-create-database
 	Connecting to database orthmcl on host orthodb with user orthomcl ...
 	OK
@@ -94,7 +94,7 @@ Option 2:
 	
 	mysql> GRANT SELECT, INSERT, UPDATE, DELETE, CREATE on *.* to orthomcl
 
-	Once the user account is setup, the database can be generated with the same script that creates the configuration file as follows:
+Once the user account is setup, the database can be generated with the same script that creates the configuration file as follows:
 
 	$ perl scripts/orthomcl-setup-database.pl --user orthomcl --password orthomcl --host localhost --database orthomcl --outfile orthomcl.conf
 	Connecting to mysql and creating database **orthmcldb** on host orthodb with user orthomcl ...

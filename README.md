@@ -8,15 +8,13 @@ Usage
 
 The brief overview of running the OrthoMCL pipeline is as follows:
 
-1. Setup MySQL database for OrthoMCL.  Please see the [OrthoMCL Documentation](http://orthomcl.org/common/downloads/software/v2.0/UserGuide.txt) for more information.
-
-2. Run the following command to verify the database setup and generate an OrthoMCL configuration file.
+1. Run the following command to setup the database, verify the setup and generate an OrthoMCL configuration file.
 
    ```bash
-   perl scripts/orthomcl-setup-database.pl --user orthomcl_database_user --password orthomcl_database_password --host orthomcl_database_host --database orthomcl_database > orthomcl.conf
+   perl scripts/orthomcl-setup-database.pl --user orthomcl_database_user --password orthomcl_database_password --host orthomcl_database_host --database orthomcl_database --outfile configure_outfile.conf [--no-create-database]
    ```
 
-3. Run the following command to start OrthoMCL.
+2. Run the following command to start OrthoMCL.
 
    ```bash
    perl scripts/orthomcl-pipeline.pl -i input/ -o output/ -m orthomcl.conf --nocompliant

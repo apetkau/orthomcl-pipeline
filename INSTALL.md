@@ -80,14 +80,29 @@ You may also want to adjust the **scheduler: fork** to **scheduler: sge** if you
 Step 3: Database Setup
 ----------------------
 
-The OrthoMCL also requires a SQL database such as [MySQL](http://www.mysql.com/) to be setup in order to load and process some of the results.  Both an account and a separate database need to be created specifically for OrthoMCL.
+The OrthoMCL also requires a [MySQL](http://www.mysql.com/) database to be setup in order to load and process some of the results.  An account needs to be created specifically for OrthoMCL. A special OrthoMCL configuration file needs to be generated with parameters and database connection information.  This can be generated automatically with the script **scripts/setup_database.pl**. There are two options for running this script as outlined below:
 
-Once the database is setup, a special OrthoMCL configuration file needs to be generated with parameters and database connection information.  This can be generated automatically with the script **scripts/setup_database.pl** as follows:
+Option 1: If you have a previously created database you can run the script with the option: --no-create-database
 
-	$ perl scripts/orthomcl-setup-database.pl --user orthomcl --password orthomcl --host localhost --database orthomcl > orthomcl.conf
-	Connecting to database orthomcl on host localhost with user orthomcl ...OK
+	$ perl scripts/orthomcl-setup-database.pl --user orthomcl --password orthomcl --host localhost --database orthomcl --outfile orthomcl.conf --no-create-database
+	Connecting to database orthmcl on host orthodb with user orthomcl ...
+	OK
+	Config file **orthomcl.conf** created.
+
+Option 2: 
+	If you want the script to create the datbase for you, run the script without --no-create-database. Prior to running the script the OrthoMCL account must be granted SELECT, INSERT, UPDATE, DELETE and CREATE permissions by logging into the MySQL server as root and executing the following command:
 	
-This will generate a file **orthomcl.conf** with database connection information and other parameters.  This file looks like:
+	mysql> GRANT SELECT, INSERT, UPDATE, DELETE, CREATE on *.* to orthomcl
+
+Once the user account is setup, the database can be generated with the same script that creates the configuration file as follows:
+
+	$ perl scripts/orthomcl-setup-database.pl --user orthomcl --password orthomcl --host localhost --database orthomcl --outfile orthomcl.conf
+	Connecting to mysql and creating database **orthmcldb** on host orthodb with user orthomcl ...
+	OK
+	database orthmcl created ...OK
+	Config file **orthomcl.conf** created.
+	
+Either option will generate a file **orthomcl.conf** with database connection information and other parameters.  This file looks like:
 
 ```
 coOrthologTable=CoOrtholog

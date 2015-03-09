@@ -90,7 +90,7 @@ Option 1: If you have a previously created database you can run the script with 
 	Config file **orthomcl.conf** created.
 
 Option 2: 
-	If you want the script to create the datbase for you, run the script withouth --no-create-database. Prior to running the script the OrthoMCL account must be granted SELECT, INSERT, UPDATE, DELETE and CREATE permissions by logging into the MySQL server as root and executing the following command:
+	If you want the script to create the datbase for you, run the script without --no-create-database. Prior to running the script the OrthoMCL account must be granted SELECT, INSERT, UPDATE, DELETE and CREATE permissions by logging into the MySQL server as root and executing the following command:
 	
 	mysql> GRANT SELECT, INSERT, UPDATE, DELETE, CREATE on *.* to orthomcl
 

@@ -46,6 +46,7 @@ Usage: orthomcl-pipeline -i [input dir] -o [output dir] -m [orthmcl config] [Opt
 	--print-orthomcl-config:  Prints example orthomcl config file.
 	--yes: Automatically answers yes to every question (could overwrite/delete old data).
 	--scheduler: Defined scheduler (sge or fork).
+	--no-cleanup: Does not remove temporary tables from database.
 	-h|--help:  Show help.
 
 	Examples:
@@ -66,4 +67,8 @@ Usage: orthomcl-pipeline -i [input dir] -o [output dir] -m [orthmcl config] [Opt
 	orthomcl-pipeline -i input/ -o output/ -m orthomcl.confg --compliant
 		Runs orthmcl with the given input/output/config files.
 		Skips the orthomclAdjustFasta stage on input files.
+
+	orthomcl-pipeline -i input/ -o output/ -m orthomcl.confg --no-cleanup
+		Runs orthmcl with the given input/output/config files.
+		Does not cleanup temporary tables.
 ```

@@ -35,7 +35,7 @@ Step 2: Other Dependencies
 Additional software dependencies for the pipeline are as follows:
 
 * [OrthoMCL](http://orthomcl.org/common/downloads/software/v2.0/) or [OrthoMCL Custom](https://github.com/apetkau/orthomclsoftware-custom) (changes to characters defining sequence identifiers)
-   * [BLAST](http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download) (blastall, formatdb)
+   * [BLAST](http://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download) (blastall, formatdb).  We have found version `2.2.26` to work best.  Older verions may not work correctly (see issue [#7](https://github.com/apetkau/orthomcl-pipeline/issues/7)).
    * [MCL](http://www.micans.org/mcl/index.html)
 
 The paths to the software dependencies must be setup within the **etc/orthomcl-pipeline.conf** file.  These software dependencies can be checked and the configuration file created using the **scripts/setup.pl** script as below:

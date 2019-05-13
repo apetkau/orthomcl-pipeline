@@ -291,7 +291,7 @@ sub validate_files
 		{
 			print "Validating $file ... ";
 			my $file_path = "$input_dir/$file";
-			my $file_io = Bio::SeqIO->new(-file => $file_path, -format=>'Fasta') or die "Could not open up file $file_path: $!";
+			my $file_io = Bio::SeqIO->new(-file => $file_path, -format=>'Fasta', -alphabet => 'protein') or die "Could not open up file $file_path: $!";
 			my $seq_count = 0;
 			my %gene_names; # checking uniqueness of gene
 			my $current_seq_name = $base;
